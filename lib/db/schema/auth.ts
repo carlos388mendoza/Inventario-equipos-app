@@ -21,6 +21,7 @@ export const userTable = sqliteTable("user", {
   // ── Campos de aplicación ──────────────────────────────────────────────
   role: text("role").$type<UserRole>().notNull().default(ROLES.RESTAURANT_USER),
   restaurantId: text("restaurantId"),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
 });
 
 export const sessionTable = sqliteTable("session", {

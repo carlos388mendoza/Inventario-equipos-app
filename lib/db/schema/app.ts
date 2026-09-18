@@ -273,3 +273,13 @@ export const securityLabelsRelations = relations(securityLabels, ({ one }) => ({
     references: [equipment.id],
   }),
 }));
+
+export const userRelations = relations(userTable, ({ one, many }) => ({
+  restaurant: one(restaurants, {
+    fields: [userTable.restaurantId],
+    references: [restaurants.id],
+  }),
+  requests: many(equipmentRequests),
+  requestHistory: many(requestHistory),
+  equipmentHistory: many(equipmentHistory),
+}));

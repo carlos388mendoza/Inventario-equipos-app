@@ -20,6 +20,18 @@ export const ROLE_LABELS: Record<UserRole, string> = {
 
 export const ALL_ROLES: UserRole[] = Object.values(ROLES);
 
+/** Valida en runtime que un valor sea un rol conocido (los valores vienen de DB/Better Auth como string). */
+export function isUserRole(value: unknown): value is UserRole {
+  return (
+    typeof value === "string" && (ALL_ROLES as string[]).includes(value)
+  );
+}
+
+/** Normaliza un valor a UserRole, con respaldo seguro. */
+export function asUserRole(value: unknown): UserRole {
+  return isUserRole(value) ? value : ROLES.RESTAURANT_USER;
+}
+
 // ─── Estados de equipo ──────────────────────────────────────────────────────
 export const EQUIPMENT_STATUS = {
   ACTIVE: "ACTIVE",
