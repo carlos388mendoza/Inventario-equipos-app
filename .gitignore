@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# base de datos local (nunca commitear la DB generada)
+/data/
+
 # production
 /build
 
