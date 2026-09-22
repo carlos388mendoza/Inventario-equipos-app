@@ -39,9 +39,12 @@ export function DashboardSidebar({
   return (
     <aside className="flex shrink-0 flex-col border-b bg-card lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:border-b-0 lg:border-r">
       <div className="flex items-center gap-2 px-4 py-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary font-bold text-primary-foreground">
-          GC
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/logo-grupo-comidas.png"
+          alt="Grupo Comidas"
+          className="h-7 w-auto shrink-0"
+        />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold leading-tight">
             Inventario Equipos
