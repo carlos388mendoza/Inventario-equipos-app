@@ -32,3 +32,12 @@ export function formatDateTime(value: string | Date | null | undefined): string 
 export function nowIso(): string {
   return new Date().toISOString();
 }
+
+/** URL base de la aplicación para enlaces públicos (por ejemplo /e/[token]). */
+export function appBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.BETTER_AUTH_URL ||
+    "http://localhost:3000"
+  );
+}
