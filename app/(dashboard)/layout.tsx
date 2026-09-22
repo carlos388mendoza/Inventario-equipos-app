@@ -1,17 +1,28 @@
-import { requireRole } from "@/lib/auth/session";
-import { ROLES } from "@/lib/db/enums";
+import { requireUser } from "@/lib/auth/session";
+import { asUserRole } from "@/lib/db/enums";
+import { DashboardSidebar } from "@/components/dashboard/sidebar";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Layout del área autenticada. Comprueba sesión y cuenta activa en servidor
- * antes de renderizar cualquier página del dashboard.
+ * Layout del área autenticada. Comprueba sesión en servidor antes de
+ * renderizar cualquier página del dashboard y muestra la navegación lateral
+ * filtrada por rol.
  */
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await requireRole(ROLES.ADMIN, ROLES.IT_MANAGER, ROLES.RESTAURANT_USER);
-  return <div>{children}</div>;
+  const user = await requireUser();
+  return (
+    <div className="flex min-h-screen flex-col bg-background lg:flex-row">
+      <DashboardSidebar
+        role={asUserRole(user.role)}
+        name={user.name}
+        email={user.email}
+      />
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
 }
