@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useTheme } from "next-themes";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,17 @@ const OPTIONS = [
  */
 export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    // next-themes: el tema solo se conoce tras la hidratación en el cliente.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
+  // Evita diferencias de hidratación: el tema solo se conoce tras montar.
+  const active = (value: (typeof OPTIONS)[number]["value"]) =>
+    mounted && theme === value;
 
   return (
     <div
@@ -27,17 +39,17 @@ export function ThemeToggle({ className }: { className?: string }) {
       aria-label="Cambiar tema"
     >
       {OPTIONS.map(({ value, label, Icon }) => {
-        const active = theme === value;
+        const isActive = active(value);
         return (
           <button
             key={value}
             type="button"
             onClick={() => setTheme(value)}
             aria-label={`Tema ${label}`}
-            aria-pressed={active}
+            aria-pressed={isActive}
             className={cn(
               "flex h-8 flex-1 items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors",
-              active
+              isActive
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
