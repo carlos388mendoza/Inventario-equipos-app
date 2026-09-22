@@ -37,23 +37,34 @@ export function DashboardSidebar({
     router.refresh();
   }
 
+  const initials =
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "?";
+
   return (
     <aside className="flex shrink-0 flex-col border-b bg-card lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:border-b-0 lg:border-r">
-      <div className="border-b px-4 py-4">
-        <div className="flex items-center justify-center">
+      <div className="flex items-center gap-3 border-b px-4 py-3 lg:flex-col lg:items-center lg:gap-0 lg:py-4">
+        <div className="flex shrink-0 items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo-grupo-comidas.png"
             alt="Grupo Comidas"
-            className="h-10 w-auto drop-shadow-sm"
+            className="h-8 w-auto drop-shadow-sm lg:h-10"
           />
         </div>
-        <p className="mt-2 text-center text-sm font-semibold leading-tight">
-          Inventario Equipos
-        </p>
-        <p className="text-center text-[11px] font-medium text-gold">
-          Grupo Comidas
-        </p>
+        <div className="min-w-0 lg:mt-2 lg:w-full">
+          <p className="truncate text-sm font-semibold leading-tight lg:text-center">
+            Inventario Equipos
+          </p>
+          <p className="hidden text-[11px] font-medium text-gold sm:block lg:text-center">
+            Grupo Comidas
+          </p>
+        </div>
       </div>
 
       <nav className="flex flex-col gap-1 overflow-x-auto p-2 lg:flex-1 lg:overflow-y-auto lg:overflow-x-visible">
@@ -80,7 +91,8 @@ export function DashboardSidebar({
 
       <div className="space-y-3 border-t p-3">
         <ThemeToggle className="w-full" />
-        <Card>
+
+        <Card className="hidden lg:block">
           <CardHeader className="p-3">
             <CardTitle className="truncate text-sm">{name}</CardTitle>
             <CardDescription className="truncate text-xs">
@@ -100,6 +112,28 @@ export function DashboardSidebar({
             </Button>
           </CardContent>
         </Card>
+
+        <div className="flex items-center gap-2 lg:hidden">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+            {initials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{name}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {ROLE_LABELS[role]}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            aria-label="Cerrar sesión"
+            onClick={handleSignOut}
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </aside>
   );
