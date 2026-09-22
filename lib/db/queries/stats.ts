@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
+  equipment,
   equipmentRequests,
   equipmentTypes,
   restaurants,
@@ -92,4 +93,42 @@ export async function requestsByType(params: {
     .where(and(...conditions))
     .groupBy(equipmentTypes.id)
     .orderBy(desc(count()));
+}
+
+/** Ranking de restaurantes por número total de solicitudes registradas. */
+export async function requestsRankingByRestaurant() {
+  return db
+    .select({
+      restaurantId: restaurants.id,
+      restaurantName: restaurants.name,
+      totalRequests: count(),
+    })
+    .from(equipmentRequests)
+    .innerJoin(
+      restaurants,
+      eq(equipmentRequests.restaurantId, restaurants.id)
+    )
+    .groupBy(restaurants.id)
+    .orderBy(desc(count()));
+}
+
+/**
+ * Inventario completo con el tipo de equipo y su vida útil de catálogo.
+ * La vida útil real se compara después con la antigüedad del equipo
+ * (installationDate ?? purchaseDate) para detectar equipos vencidos.
+ */
+export async function equipmentWithType() {
+  return db
+    .select({
+      equipment: equipment,
+      typeId: equipmentTypes.id,
+      typeName: equipmentTypes.name,
+      usefulLifeMonths: equipmentTypes.usefulLifeMonths,
+    })
+    .from(equipment)
+    .innerJoin(
+      equipmentTypes,
+      eq(equipment.equipmentTypeId, equipmentTypes.id)
+    )
+    .orderBy(asc(equipmentTypes.name), asc(equipment.assetCode));
 }
