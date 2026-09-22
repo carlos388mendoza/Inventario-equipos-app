@@ -150,3 +150,15 @@
     margin: 12mm;
   }
 }
+
+/* Densidad de tablas (preferencia del usuario en Ajustes) */
+html[data-density="compact"] table th,
+html[data-density="compact"] table td {
+  padding-top: 0.375rem !important;
+  padding-bottom: 0.375rem !important;
+}
+html[data-density="comfortable"] table th,
+html[data-density="comfortable"] table td {
+  padding-top: 0.875rem !important;
+  padding-bottom: 0.875rem !important;
+}

@@ -6,6 +6,7 @@ import {
   PackageSearch,
   QrCode,
   ReceiptText,
+  Settings,
   Store,
   Tags,
   Users,
@@ -79,5 +80,11 @@ export const NAV_ITEMS: NavItem[] = [
     label: "Usuarios",
     icon: Users,
     roles: [ROLES.ADMIN],
+  },
+  {
+    href: "/settings",
+    label: "Ajustes",
+    icon: Settings,
+    roles: [ROLES.ADMIN, ROLES.IT_MANAGER, ROLES.RESTAURANT_USER],
   },
 ];

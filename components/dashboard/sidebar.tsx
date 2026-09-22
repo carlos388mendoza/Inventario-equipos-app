@@ -9,14 +9,7 @@ import { NAV_ITEMS } from "@/lib/navigation";
 import { ROLE_LABELS, type UserRole } from "@/lib/db/enums";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/dashboard/theme-toggle";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function DashboardSidebar({
   role,
@@ -90,8 +83,6 @@ export function DashboardSidebar({
       </nav>
 
       <div className="space-y-3 border-t p-3">
-        <ThemeToggle className="w-full" />
-
         <Card className="hidden lg:block">
           <CardHeader className="p-3">
             <CardTitle className="truncate text-sm">{name}</CardTitle>

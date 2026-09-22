@@ -22,7 +22,7 @@ export default async function DashboardLayout({
         name={user.name}
         email={user.email}
       />
-      <div className="min-w-0 flex-1">{children}</div>
+      <div className="mx-auto w-full min-w-0 max-w-7xl flex-1">{children}</div>
     </div>
   );
 }

@@ -220,7 +220,7 @@ export default async function StatisticsPage() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto rounded-md border">
-              <table className="w-full text-sm">
+              <table className="w-full min-w-[40rem] text-sm">
                 <thead className="bg-muted/50 text-muted-foreground">
                   <tr>
                     <th className="px-4 py-2 text-left font-medium">Activo</th>
