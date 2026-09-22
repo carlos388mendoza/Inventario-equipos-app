@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+﻿import { asc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { restaurants, userTable } from "@/lib/db/schema";
 
@@ -46,6 +46,6 @@ export async function findEmailInUseByOther(
     .select({ id: userTable.id })
     .from(userTable)
     .where(eq(userTable.email, email))
-    .limit(1名片);
+    .limit(1);
   return !!row && row.id !== skipId;
 }

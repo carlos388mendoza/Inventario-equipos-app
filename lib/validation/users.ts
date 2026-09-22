@@ -23,7 +23,7 @@ export const createUserSchema = z.object({
     .min(8, "La contraseña debe tener al menos 8 caracteres")
     .max(100, "La contraseña no puede superar 100 caracteres"),
   role: z.enum(ALL_ROLES as [UserRole, ...UserRole[]], {
-    errorMap: () => ({ message: "Rol no válido" }),
+    message: "Rol no válido",
   }),
   restaurantId: z.string().trim().min(1).nullable().optional(),
   active: z.boolean().default(true),
@@ -45,7 +45,7 @@ export const updateUserSchema = z.object({
     .email("El email no es válido")
     .max(254, "El email no puede superar 254 caracteres"),
   role: z.enum(ALL_ROLES as [UserRole, ...UserRole[]], {
-    errorMap: () => ({ message: "Rol no válido" }),
+    message: "Rol no válido",
   }),
   restaurantId: z.string().trim().min(1).nullable().optional(),
   active: z.boolean(),

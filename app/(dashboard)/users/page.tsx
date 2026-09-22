@@ -1,7 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import { requireRole } from "@/lib/auth/session";
 import { db } from "@/lib/db";
-import { restaurants, userTable } from "@/lib/db/schema";
+import { restaurants } from "@/lib/db/schema";
 import { ROLES } from "@/lib/db/enums";
 import { listUsers } from "@/lib/db/queries/users";
 import { UserManager } from "@/components/users/user-manager";

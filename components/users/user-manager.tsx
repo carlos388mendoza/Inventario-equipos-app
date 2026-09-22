@@ -39,14 +39,6 @@ import { ROLES, ROLE_LABELS } from "@/lib/db/enums";
 
 const ROLE_OPTIONS = Object.values(ROLES) as (keyof typeof ROLE_LABELS)[];
 
-function formatDate(value: Date) {
-  return new Intl.DateTimeFormat("es-ES", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(value);
-}
-
 interface FormState {
   name: string;
   email: string;

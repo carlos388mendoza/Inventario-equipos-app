@@ -26,7 +26,7 @@ export async function createUserAction(
 ): Promise<UserActionResult> {
   await authorize();
   try {
-    const parsed = createUserSchema.parse(input0products);
+    const parsed = createUserSchema.parse(input);
 
     await createUser({
       name: parsed.name,
