@@ -9,6 +9,7 @@ import { NAV_ITEMS } from "@/lib/navigation";
 import { ROLE_LABELS, type UserRole } from "@/lib/db/enums";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import {
   Card,
   CardContent,
@@ -38,19 +39,21 @@ export function DashboardSidebar({
 
   return (
     <aside className="flex shrink-0 flex-col border-b bg-card lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:border-b-0 lg:border-r">
-      <div className="flex items-center gap-2 px-4 py-4">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/logo-grupo-comidas.png"
-          alt="Grupo Comidas"
-          className="h-7 w-auto shrink-0"
-        />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold leading-tight">
-            Inventario Equipos
-          </p>
-          <p className="text-[11px] text-muted-foreground">Grupo Comidas</p>
+      <div className="border-b px-4 py-4">
+        <div className="flex items-center justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo-grupo-comidas.png"
+            alt="Grupo Comidas"
+            className="h-10 w-auto drop-shadow-sm"
+          />
         </div>
+        <p className="mt-2 text-center text-sm font-semibold leading-tight">
+          Inventario Equipos
+        </p>
+        <p className="text-center text-[11px] font-medium text-gold">
+          Grupo Comidas
+        </p>
       </div>
 
       <nav className="flex flex-col gap-1 overflow-x-auto p-2 lg:flex-1 lg:overflow-y-auto lg:overflow-x-visible">
@@ -75,7 +78,8 @@ export function DashboardSidebar({
         })}
       </nav>
 
-      <div className="border-t p-3">
+      <div className="space-y-3 border-t p-3">
+        <ThemeToggle className="w-full" />
         <Card>
           <CardHeader className="p-3">
             <CardTitle className="truncate text-sm">{name}</CardTitle>
