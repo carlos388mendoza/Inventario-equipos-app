@@ -64,8 +64,8 @@ export function DashboardSidebar({
               key={item.href}
               href={item.href}
               className={cn(
-                "flex shrink-0 items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-                isActive && "bg-muted font-medium text-foreground"
+                "flex shrink-0 items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                isActive && "border-gold bg-primary font-medium text-primary-foreground"
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
