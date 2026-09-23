@@ -4,6 +4,9 @@ export interface LabelDto {
   assetCode: string;
   typeName: string;
   restaurantName: string;
+  restaurantBrand: string | null;
+  restaurantSector: string | null;
+  restaurantLogo: string | null;
   token: string;
   url: string;
   qrDataUrl: string;

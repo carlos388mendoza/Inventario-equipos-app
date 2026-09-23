@@ -10,6 +10,7 @@ import {
 } from "@/lib/db/schema";
 import { EQUIPMENT_STATUS_LABELS } from "@/lib/db/enums";
 import { Badge } from "@/components/ui/badge";
+import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import {
   Card,
   CardContent,
@@ -47,6 +48,9 @@ export default async function PublicEquipmentPage({
       typeName: equipmentTypes.name,
       restaurantName: restaurants.name,
       restaurantCode: restaurants.code,
+      restaurantBrand: restaurants.brand,
+      restaurantSector: restaurants.sector,
+      restaurantLogo: restaurants.logo,
     })
     .from(securityLabels)
     .innerJoin(equipment, eq(securityLabels.equipmentId, equipment.id))
@@ -78,6 +82,18 @@ export default async function PublicEquipmentPage({
                 {[row.brand, row.model].filter(Boolean).join(" ")}
               </p>
             )}
+          </div>
+          <div className="flex justify-center rounded-md bg-primary/5 p-4">
+            <RestaurantIdentity
+              restaurant={{
+                name: row.restaurantName,
+                brand: row.restaurantBrand,
+                sector: row.restaurantSector,
+                logo: row.restaurantLogo,
+              }}
+              size="lg"
+              className="justify-center"
+            />
           </div>
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div>

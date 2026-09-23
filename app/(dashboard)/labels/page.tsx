@@ -25,6 +25,9 @@ export default async function LabelsPage() {
         assetCode: equipment.assetCode,
         typeName: equipmentTypes.name,
         restaurantName: restaurants.name,
+        restaurantBrand: restaurants.brand,
+        restaurantSector: restaurants.sector,
+        restaurantLogo: restaurants.logo,
       })
       .from(securityLabels)
       .innerJoin(equipment, eq(securityLabels.equipmentId, equipment.id))
@@ -51,6 +54,9 @@ export default async function LabelsPage() {
         assetCode: r.assetCode,
         typeName: r.typeName,
         restaurantName: r.restaurantName,
+        restaurantBrand: r.restaurantBrand,
+        restaurantSector: r.restaurantSector,
+        restaurantLogo: r.restaurantLogo,
         token: r.label.token,
         url,
         qrDataUrl: await QRCode.toDataURL(url),

@@ -14,6 +14,9 @@ export interface RequestWithNames {
   id: string;
   restaurantId: string;
   restaurantName: string;
+  restaurantBrand: string | null;
+  restaurantSector: string | null;
+  restaurantLogo: string | null;
   requestedById: string;
   requestedByName: string;
   equipmentTypeId: string;
@@ -45,6 +48,9 @@ export async function listRequests(params?: {
     .select({
       request: equipmentRequests,
       restaurantName: restaurants.name,
+      restaurantBrand: restaurants.brand,
+      restaurantSector: restaurants.sector,
+      restaurantLogo: restaurants.logo,
       requestedByName: userTable.name,
       equipmentTypeName: equipmentTypes.name,
       currentEquipmentAssetCode: equipment.assetCode,
@@ -67,6 +73,9 @@ export async function listRequests(params?: {
     id: request.id,
     restaurantId: request.restaurantId,
     restaurantName: names.restaurantName,
+    restaurantBrand: names.restaurantBrand ?? null,
+    restaurantSector: names.restaurantSector ?? null,
+    restaurantLogo: names.restaurantLogo ?? null,
     requestedById: request.requestedBy,
     requestedByName: names.requestedByName,
     equipmentTypeId: request.equipmentTypeId,

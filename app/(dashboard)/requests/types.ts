@@ -4,6 +4,9 @@ export interface RequestDto {
   id: string;
   restaurantId: string;
   restaurantName: string;
+  restaurantBrand: string | null;
+  restaurantSector: string | null;
+  restaurantLogo: string | null;
   requestedById: string;
   requestedByName: string;
   equipmentTypeId: string;

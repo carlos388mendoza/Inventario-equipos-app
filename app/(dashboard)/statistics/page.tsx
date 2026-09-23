@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +47,7 @@ export default async function StatisticsPage() {
     db.select().from(restaurants),
   ]);
 
-  const restaurantMap = new Map(restaurantRows.map((r) => [r.id, r.name]));
+  const restaurantMap = new Map(restaurantRows.map((r) => [r.id, r]));
 
   const types = new Map<string, TypeSummary>();
   for (const row of equiposConTipo) {
@@ -72,7 +73,7 @@ export default async function StatisticsPage() {
     if (lifecycle.state === "warning" || lifecycle.state === "expired") {
       summary.atRisk.push({
         assetCode: e.assetCode,
-        restaurantName: restaurantMap.get(e.restaurantId) ?? "Desconocido",
+        restaurantName: restaurantMap.get(e.restaurantId)?.name ?? "Desconocido",
         state: lifecycle.state,
         monthsElapsed: lifecycle.monthsElapsed,
         monthsRemaining: lifecycle.monthsRemaining,
@@ -120,10 +121,17 @@ export default async function StatisticsPage() {
                       {index + 1}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">
-                        {r.restaurantName}
-                      </span>
-                      <span className="block h-1.5 overflow-hidden rounded-full bg-muted">
+                      <RestaurantIdentity
+                        restaurant={{
+                          name: r.restaurantName,
+                          brand: r.restaurantBrand,
+                          sector: r.restaurantSector,
+                          logo: r.restaurantLogo,
+                        }}
+                        size="sm"
+                        showSector={false}
+                      />
+                      <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-muted">
                         <span
                           className="block h-full rounded-full bg-primary"
                           style={{
@@ -262,8 +270,24 @@ export default async function StatisticsPage() {
                             {e.assetCode}
                           </td>
                           <td className="px-4 py-2">{row.typeName}</td>
-                          <td className="px-4 py-2 text-muted-foreground">
-                            {restaurantMap.get(e.restaurantId) ?? "Desconocido"}
+                          <td className="px-4 py-2">
+                            {(() => {
+                              const res = restaurantMap.get(e.restaurantId);
+                              return res ? (
+                                <RestaurantIdentity
+                                  restaurant={{
+                                    name: res.name,
+                                    brand: res.brand,
+                                    sector: res.sector,
+                                    logo: res.logo,
+                                  }}
+                                  size="sm"
+                                  showSector={false}
+                                />
+                              ) : (
+                                "Desconocido"
+                              );
+                            })()}
                           </td>
                           <td className="px-4 py-2 text-muted-foreground">
                             {formatDate(lifecycle.startDate)}

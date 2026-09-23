@@ -20,6 +20,9 @@ export interface EquipmentListItem extends EquipmentDto {
   equipmentTypeName: string;
   restaurantName: string;
   restaurantCode: string;
+  restaurantBrand?: string | null;
+  restaurantSector?: string | null;
+  restaurantLogo?: string | null;
   lifecycle: LifecycleInfo;
   hasLabel: boolean;
 }

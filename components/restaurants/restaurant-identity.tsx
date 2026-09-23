@@ -1,3 +1,5 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import { Store } from "lucide-react";
 import * as React from "react";
@@ -40,11 +42,12 @@ export function RestaurantIdentity({
     ? restaurant.name + " · " + restaurant.brand
     : restaurant.name;
   const [imgError, setImgError] = React.useState(false);
-  const brand = restaurant.brand || restaurant.name;
 
   return (
     <div className={cn("flex min-w-0 items-center gap-3", className)}>
       {restaurant.logo && !imgError ? (
+        // Los logos pueden ser URLs arbitrarias del restaurante; mantener <img>.
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={restaurant.logo}
           alt={"Logo de " + title}

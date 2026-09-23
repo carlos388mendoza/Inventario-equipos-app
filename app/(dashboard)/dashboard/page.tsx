@@ -19,6 +19,7 @@ import {
   type RequestStatus,
 } from "@/lib/db/enums";
 import { formatDate } from "@/lib/utils";
+import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import {
   Card,
   CardContent,
@@ -201,11 +202,19 @@ export default async function DashboardHomePage() {
                         <p className="truncate text-sm font-medium">
                           {eq.typeName}
                         </p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           <span className="font-mono">{eq.assetCode}</span>
-                          {" · "}
-                          {eq.restaurantName}
                         </p>
+                        <RestaurantIdentity
+                          restaurant={{
+                            name: eq.restaurantName,
+                            brand: eq.restaurantBrand,
+                            sector: eq.restaurantSector,
+                            logo: eq.restaurantLogo,
+                          }}
+                          size="sm"
+                          showSector={false}
+                        />
                       </div>
                       <Badge
                         variant={eq.state === "expired" ? "destructive" : "outline"}
@@ -253,9 +262,18 @@ export default async function DashboardHomePage() {
                         <p className="truncate text-sm font-medium">
                           {r.equipmentTypeName}
                         </p>
+                        <RestaurantIdentity
+                          restaurant={{
+                            name: r.restaurantName,
+                            brand: r.restaurantBrand,
+                            sector: r.restaurantSector,
+                            logo: r.restaurantLogo,
+                          }}
+                          size="sm"
+                          showSector={false}
+                        />
                         <p className="truncate text-xs text-muted-foreground">
-                          {formatDate(r.createdAt)} · {r.restaurantName} ·{" "}
-                          {r.requestedByName}
+                          {formatDate(r.createdAt)} · {r.requestedByName}
                         </p>
                       </div>
                       <Badge

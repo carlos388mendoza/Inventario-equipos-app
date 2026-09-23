@@ -3,6 +3,8 @@
 import * as React from "react";
 import { toast } from "sonner";
 import { getMyRequestHistory } from "@/app/(dashboard)/my-requests/actions";
+import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
+import type { RestaurantIdentityData } from "@/components/restaurants/restaurant-identity";
 import type {
   RequestDto,
   RequestHistoryDto,
@@ -46,8 +48,10 @@ function statusBadgeVariant(status: RequestStatus) {
 
 export function MyRequestsManager({
   requests,
+  restaurant,
 }: {
   requests: RequestDto[];
+  restaurant: RestaurantIdentityData | null;
 }) {
   const [tab, setTab] = React.useState<"active" | "history">("active");
   const [historyFor, setHistoryFor] = React.useState<RequestDto | null>(null);
@@ -79,11 +83,20 @@ export function MyRequestsManager({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Mis solicitudes</CardTitle>
-        <CardDescription>
-          Solicitudes de equipo de tu restaurante.
-        </CardDescription>
+      <CardHeader className="flex-row items-center justify-between gap-3 space-y-0">
+        <div>
+          <CardTitle>Mis solicitudes</CardTitle>
+          <CardDescription>
+            Solicitudes de equipo de tu restaurante.
+          </CardDescription>
+        </div>
+        {restaurant && (
+          <RestaurantIdentity
+            restaurant={restaurant}
+            size="md"
+            showSector={false}
+          />
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

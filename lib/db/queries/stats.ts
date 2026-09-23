@@ -101,6 +101,9 @@ export async function requestsRankingByRestaurant() {
     .select({
       restaurantId: restaurants.id,
       restaurantName: restaurants.name,
+      restaurantBrand: restaurants.brand,
+      restaurantSector: restaurants.sector,
+      restaurantLogo: restaurants.logo,
       totalRequests: count(),
     })
     .from(equipmentRequests)

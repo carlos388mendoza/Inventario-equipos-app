@@ -24,6 +24,9 @@ export interface AtRiskEquipment {
   assetCode: string;
   typeName: string;
   restaurantName: string;
+  restaurantBrand: string | null;
+  restaurantSector: string | null;
+  restaurantLogo: string | null;
   state: Exclude<LifecycleState, "ok" | "unknown">;
   label: string;
 }
@@ -52,7 +55,13 @@ export async function getDashboardSummary(
       equipmentWithType(),
       listRequests(restaurantId ? { restaurantId } : undefined),
       db
-        .select({ id: restaurants.id, name: restaurants.name })
+        .select({
+          id: restaurants.id,
+          name: restaurants.name,
+          brand: restaurants.brand,
+          sector: restaurants.sector,
+          logo: restaurants.logo,
+        })
         .from(restaurants)
         .orderBy(asc(restaurants.name)),
       db
@@ -63,7 +72,7 @@ export async function getDashboardSummary(
       restaurantId ? null : db.select({ total: count() }).from(restaurants),
     ]);
 
-  const restaurantMap = new Map(restaurantRows.map((r) => [r.id, r.name]));
+  const restaurantMap = new Map(restaurantRows.map((r) => [r.id, r]));
 
   const scoped = restaurantId
     ? equiposConTipo.filter((r) => r.equipment.restaurantId === restaurantId)
@@ -80,11 +89,15 @@ export async function getDashboardSummary(
     );
     lifecycle[lc.state] += 1;
     if (lc.state === "warning" || lc.state === "expired") {
+      const restaurant = restaurantMap.get(e.restaurantId);
       atRisk.push({
         id: e.id,
         assetCode: e.assetCode,
         typeName: row.typeName,
-        restaurantName: restaurantMap.get(e.restaurantId) ?? "—",
+        restaurantName: restaurant?.name ?? "—",
+        restaurantBrand: restaurant?.brand ?? null,
+        restaurantSector: restaurant?.sector ?? null,
+        restaurantLogo: restaurant?.logo ?? null,
         state: lc.state,
         label: lc.label,
       });

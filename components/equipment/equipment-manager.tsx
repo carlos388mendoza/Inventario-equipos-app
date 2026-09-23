@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LifecycleBadge } from "@/components/equipment/lifecycle-badge";
+import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import { EQUIPMENT_STATUS_LABELS, ALL_EQUIPMENT_STATUS } from "@/lib/db/enums";
 import { formatDate } from "@/lib/utils";
 import type { EquipmentListItem } from "@/app/(dashboard)/equipment/types";
@@ -161,8 +162,17 @@ export function EquipmentManager({
                     <td className="px-4 py-2 text-muted-foreground">
                       {[e.brand, e.model].filter(Boolean).join(" ") || "—"}
                     </td>
-                    <td className="px-4 py-2 text-muted-foreground">
-                      {e.restaurantName}
+                    <td className="px-4 py-2">
+                      <RestaurantIdentity
+                        restaurant={{
+                          name: e.restaurantName,
+                          brand: e.restaurantBrand,
+                          sector: e.restaurantSector,
+                          logo: e.restaurantLogo,
+                        }}
+                        size="sm"
+                        showSector={false}
+                      />
                     </td>
                     <td className="px-4 py-2">
                       <Badge

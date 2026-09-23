@@ -70,6 +70,9 @@ export default async function EquipmentPage() {
       equipmentTypeName: type?.name ?? "Tipo desconocido",
       restaurantName: restaurant?.name ?? "Desconocido",
       restaurantCode: restaurant?.code ?? "—",
+      restaurantBrand: restaurant?.brand ?? null,
+      restaurantSector: restaurant?.sector ?? null,
+      restaurantLogo: restaurant?.logo ?? null,
       lifecycle: computeLifecycle(
         type?.usefulLifeMonths ?? 0,
         e.installationDate ?? e.purchaseDate

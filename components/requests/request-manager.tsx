@@ -4,6 +4,7 @@ import * as React from "react";
 import { useTransition } from "react";
 import { toast } from "sonner";
 import { changeRequestStatus } from "@/app/(dashboard)/requests/actions";
+import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import type {
   EquipmentSelectOption,
   RequestDto,
@@ -225,8 +226,17 @@ export function RequestManager({
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-muted-foreground">
-                      {r.restaurantName}
+                    <td className="px-4 py-2">
+                      <RestaurantIdentity
+                        restaurant={{
+                          name: r.restaurantName,
+                          brand: r.restaurantBrand,
+                          sector: r.restaurantSector,
+                          logo: r.restaurantLogo,
+                        }}
+                        size="sm"
+                        showSector={false}
+                      />
                     </td>
                     <td className="px-4 py-2">
                       {REQUEST_PRIORITY_LABELS[r.priority] ?? r.priority}

@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import { formatDate } from "@/lib/utils";
 
 export function LabelsManager({
@@ -138,8 +139,17 @@ export function LabelsManager({
                       {l.assetCode}
                     </td>
                     <td className="px-4 py-2">{l.typeName}</td>
-                    <td className="px-4 py-2 text-muted-foreground">
-                      {l.restaurantName}
+                    <td className="px-4 py-2">
+                      <RestaurantIdentity
+                        restaurant={{
+                          name: l.restaurantName,
+                          brand: l.restaurantBrand,
+                          sector: l.restaurantSector,
+                          logo: l.restaurantLogo,
+                        }}
+                        size="sm"
+                        showSector={false}
+                      />
                     </td>
                     <td className="px-4 py-2">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
