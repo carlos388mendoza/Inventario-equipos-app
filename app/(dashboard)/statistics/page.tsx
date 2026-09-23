@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { restaurants } from "@/lib/db/schema";
 import { computeLifecycle } from "@/lib/equipment/lifecycle";
 import { ROLES } from "@/lib/db/enums";
+import { StatsAgentChat } from "@/components/statistics/stats-agent-chat";
 import {
   Card,
   CardContent,
@@ -337,6 +338,8 @@ export default async function StatisticsPage() {
             </div>
           </CardContent>
         </Card>
+
+        <StatsAgentChat />
       </div>
     </main>
   );

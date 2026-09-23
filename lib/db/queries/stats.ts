@@ -135,3 +135,49 @@ export async function equipmentWithType() {
     )
     .orderBy(asc(equipmentTypes.name), asc(equipment.assetCode));
 }
+
+/** Total de solicitudes registradas (opcional: filtradas por restaurante). */
+export async function totalRequests(restaurantId?: string) {
+  const conditions = restaurantId
+    ? [eq(equipmentRequests.restaurantId, restaurantId)]
+    : [];
+  const rows = await db
+    .select({ total: count() })
+    .from(equipmentRequests)
+    .where(conditions.length > 0 ? and(...conditions) : undefined);
+  return rows[0]?.total ?? 0;
+}
+
+/** Solicitudes agrupadas por estado (opcional: filtradas por restaurante). */
+export async function requestsByStatus(restaurantId?: string) {
+  const conditions = restaurantId
+    ? [eq(equipmentRequests.restaurantId, restaurantId)]
+    : [];
+  return db
+    .select({ status: equipmentRequests.status, totalRequests: count() })
+    .from(equipmentRequests)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .groupBy(equipmentRequests.status);
+}
+
+/** Equipos agrupados por tipo de equipo, con conteo y vida útil de catálogo. */
+export async function equipmentByType(restaurantId?: string) {
+  const conditions = restaurantId
+    ? [eq(equipment.restaurantId, restaurantId)]
+    : [];
+  return db
+    .select({
+      typeId: equipmentTypes.id,
+      typeName: equipmentTypes.name,
+      usefulLifeMonths: equipmentTypes.usefulLifeMonths,
+      equipmentCount: count(),
+    })
+    .from(equipment)
+    .innerJoin(
+      equipmentTypes,
+      eq(equipment.equipmentTypeId, equipmentTypes.id)
+    )
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .groupBy(equipmentTypes.id)
+    .orderBy(desc(count()));
+}

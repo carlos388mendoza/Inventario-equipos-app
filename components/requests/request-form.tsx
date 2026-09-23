@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useTransition } from "react";
 import { toast } from "sonner";
+import { Mic, Send, Sparkles } from "lucide-react";
 import { createRequest } from "@/app/(dashboard)/requests/actions";
 import {
   REQUEST_KINDS,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/validation/requests";
 import { ALL_REQUEST_PRIORITY, REQUEST_PRIORITY_LABELS } from "@/lib/db/enums";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -28,6 +30,165 @@ import type {
 interface TypeOption {
   id: string;
   name: string;
+}
+
+interface VoiceDraft {
+  equipmentTypeId: string;
+  kind: RequestKind;
+  currentEquipmentId: string;
+  priority: string;
+  reason: string;
+  description: string;
+}
+
+type SpeechRecognitionLike = {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+
+type SpeechRecognitionEventLike = {
+  resultIndex: number;
+  results: ArrayLike<{ transcript: string }>;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+function getSpeechRecognition(): SpeechRecognitionConstructor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  };
+  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
+}
+
+function VoiceRequestPanel({
+  restaurantId,
+  restaurantLocked,
+  onPrefill,
+}: {
+  restaurantId: string;
+  restaurantLocked: boolean;
+  onPrefill: (draft: VoiceDraft) => void;
+}) {
+  const [transcript, setTranscript] = React.useState("");
+  const [listening, setListening] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const recognitionRef = React.useRef<SpeechRecognitionLike | null>(null);
+
+  function stopListening() {
+    recognitionRef.current?.abort();
+    recognitionRef.current = null;
+    setListening(false);
+  }
+
+  function toggleListening() {
+    if (listening) {
+      stopListening();
+      return;
+    }
+    const Recognition = getSpeechRecognition();
+    if (!Recognition) {
+      setError("Tu navegador no soporta dictado por voz. Escribe el texto manualmente.");
+      return;
+    }
+    setError("");
+    const recognition = new Recognition();
+    recognitionRef.current = recognition;
+    recognition.lang = "es-ES";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
+      let finalText = "";
+      for (let i = 0; i < event.results.length; i++) {
+        finalText += event.results[i].transcript;
+      }
+      setTranscript(finalText);
+    };
+    recognition.onerror = () => {
+      stopListening();
+      setError("No se pudo capturar la voz. Intenta de nuevo.");
+    };
+    recognition.onend = () => setListening(false);
+    recognition.start();
+    setListening(true);
+  }
+
+  async function analyze() {
+    if (transcript.trim().length === 0) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/ai/voice-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: transcript,
+          restaurantId: restaurantLocked ? undefined : restaurantId || undefined,
+        }),
+      });
+      const data = (await res.json()) as
+        | { ok: true; draft: VoiceDraft }
+        | { ok: false; error: string };
+      if (!data.ok) {
+        setError(data.error ?? "No se pudo analizar la solicitud.");
+        return;
+      }
+      onPrefill(data.draft);
+    } catch {
+      setError("Error de conexión al analizar la solicitud.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded-md border border-dashed p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-sm font-medium">Solicitud por voz</p>
+        <Button
+          type="button"
+          size="sm"
+          variant={listening ? "destructive" : "outline"}
+          onClick={toggleListening}
+          disabled={loading}
+        >
+          <Mic className="mr-1 h-4 w-4" />
+          {listening ? "Detener" : "Dictar"}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={analyze}
+          disabled={loading || transcript.trim().length === 0}
+        >
+          <Send className="mr-1 h-4 w-4" />
+          {loading ? "Analizando…" : "Prellenar con IA"}
+        </Button>
+      </div>
+      <Input
+        value={transcript}
+        onChange={(e) => setTranscript(e.target.value)}
+        placeholder="Dicta o escribe lo que necesitas, p. ej. 'Se dañó la impresora de facturas y necesito reemplazarla con urgencia'."
+      />
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      {transcript && (
+        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Sparkles className="h-3 w-3" />
+          Revisa el análisis antes de enviar: rellena el formulario pero no crea
+          la solicitud automáticamente.
+        </p>
+      )}
+    </div>
+  );
 }
 
 export function RequestForm({
@@ -73,6 +234,16 @@ export function RequestForm({
     setDescription("");
   }
 
+  function applyDraft(draft: VoiceDraft) {
+    setEquipmentTypeId(draft.equipmentTypeId);
+    setKind(draft.kind);
+    setCurrentEquipmentId(draft.currentEquipmentId ?? "");
+    setPriority(draft.priority ?? "NORMAL");
+    setReason(draft.reason);
+    setDescription(draft.description ?? "");
+    toast.success("Solicitud prellenada con la IA. Revísala y envía.");
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     startSubmit(async () => {
@@ -97,6 +268,12 @@ export function RequestForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <VoiceRequestPanel
+        restaurantId={restaurantId}
+        restaurantLocked={restaurantLocked}
+        onPrefill={applyDraft}
+      />
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>Tipo de equipo</Label>
