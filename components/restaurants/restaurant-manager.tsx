@@ -8,6 +8,7 @@ import {
   toggleRestaurantActive,
   updateRestaurant,
 } from "@/app/(dashboard)/restaurants/actions";
+import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import type { RestaurantDto } from "@/app/(dashboard)/restaurants/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -172,7 +173,9 @@ export function RestaurantManager({
                 )}
                 {filtered.map((r) => (
                   <tr key={r.id} className="border-t">
-                    <td className="px-4 py-2 font-medium">{r.name}</td>
+                    <td className="px-4 py-2">
+                      <RestaurantIdentity restaurant={r} size="sm" showSector />
+                    </td>
                     <td className="px-4 py-2 font-mono text-xs">{r.code}</td>
                     <td className="px-4 py-2 text-muted-foreground">{r.address ?? "—"}</td>
                     <td className="px-4 py-2">

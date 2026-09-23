@@ -15,6 +15,13 @@
       "when": 1789760785108,
       "tag": "0001_clear_ironclad",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790123210140,
+      "tag": "0002_complete_thanos",
+      "breakpoints": true
     }
   ]
 }

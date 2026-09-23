@@ -25,6 +25,12 @@ export const restaurants = sqliteTable(
     code: text("code").notNull(),
     address: text("address"),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
+    /** Marca que representa (ej. "China Wok", "Pizza Hut"). */
+    brand: text("brand"),
+    /** Sector de la unidad (ej. "Restaurantes"). */
+    sector: text("sector"),
+    /** URL o ruta del logo (local en /public/brands o URL externa). */
+    logo: text("logo"),
     createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
     updatedAt: integer("updatedAt", { mode: "timestamp_ms" }).notNull(),
   },
