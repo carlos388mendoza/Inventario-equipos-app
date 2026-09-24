@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "logos:zpl": "node scripts/generate-zpl-logos.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
@@ -49,6 +50,7 @@
     "sonner": "^2.0.8",
     "streamdown": "^2.6.0",
     "tailwind-merge": "^3.7.0",
+    "zebra-browser-print-wrapper": "^0.1.4",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -61,6 +63,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5",

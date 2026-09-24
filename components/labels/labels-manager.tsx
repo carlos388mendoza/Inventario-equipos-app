@@ -35,9 +35,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Printer } from "lucide-react";
 import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import { LabelPreview } from "@/components/labels/label-preview";
+import { PrintPanel, type LabelPrintData } from "@/components/labels/print-panel";
 import { formatDate } from "@/lib/utils";
+
+function toPrintData(input: {
+  url: string;
+  assetCode: string;
+  typeName: string;
+  restaurantName: string;
+  restaurantSector?: string | null;
+  restaurantLogo: string | null;
+  installationDate?: string | Date | null;
+  createdAt: string | Date;
+}): LabelPrintData {
+  return {
+    url: input.url,
+    assetCode: input.assetCode,
+    typeName: input.typeName,
+    restaurantName: input.restaurantName,
+    restaurantSector: input.restaurantSector,
+    restaurantLogo: input.restaurantLogo,
+    installationDate: input.installationDate,
+    createdAt: input.createdAt,
+  };
+}
 
 export function LabelsManager({
   labels: initial,
@@ -52,6 +76,9 @@ export function LabelsManager({
   const [equipmentId, setEquipmentId] = React.useState("");
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [result, setResult] = React.useState<GenerateLabelResult | null>(null);
+  const [rowToPrint, setRowToPrint] = React.useState<LabelPrintData | null>(
+    null
+  );
   const [submitting, startSubmit] = useTransition();
 
   const candidateEquipment = equipmentOptions.filter(
@@ -170,6 +197,14 @@ export function LabelsManager({
                           </a>
                         </Button>
                         <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setRowToPrint(toPrintData(l))}
+                        >
+                          <Printer />
+                          Imprimir
+                        </Button>
+                        <Button
                           variant="ghost"
                           size="sm"
                           disabled={submitting}
@@ -273,7 +308,7 @@ export function LabelsManager({
                   createdAt: result.createdAt,
                 }}
               />
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-wrap justify-end gap-2">
                 <Button asChild variant="outline" size="sm">
                   <a href={result.url} target="_blank" rel="noreferrer">
                     Abrir página pública
@@ -282,6 +317,15 @@ export function LabelsManager({
                 <Button
                   type="button"
                   size="sm"
+                  onClick={() => setRowToPrint(toPrintData(result))}
+                >
+                  <Printer />
+                  Imprimir
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setDialogOpen(false)}
                 >
                   Cerrar
@@ -289,6 +333,24 @@ export function LabelsManager({
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={rowToPrint !== null}
+        onOpenChange={(open) => {
+          if (!open) setRowToPrint(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Imprimir etiqueta</DialogTitle>
+            <DialogDescription>
+              Envía el ZPL de {rowToPrint?.assetCode ?? ""} a la Zebra ZD230 a
+              través de Zebra Browser Print. No se imprime automáticamente.
+            </DialogDescription>
+          </DialogHeader>
+          {rowToPrint && <PrintPanel label={rowToPrint} />}
         </DialogContent>
       </Dialog>
     </div>
