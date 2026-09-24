@@ -6,13 +6,31 @@ import QRCode from "qrcode";
 import { requireRole } from "@/lib/auth/session";
 import { resolveScope, assertRestaurantAccess } from "@/lib/equipment/scope";
 import { db } from "@/lib/db";
-import { equipment, securityLabels } from "@/lib/db/schema";
+import {
+  equipment,
+  equipmentTypes,
+  restaurants,
+  securityLabels,
+} from "@/lib/db/schema";
 import { ROLES } from "@/lib/db/enums";
 import { generateLabelSchema } from "@/lib/validation/labels";
 import { appBaseUrl } from "@/lib/utils";
 
 export type GenerateLabelResult =
-  | { ok: true; token: string; url: string; qrDataUrl: string }
+  | {
+      ok: true;
+      token: string;
+      url: string;
+      qrDataUrl: string;
+      assetCode: string;
+      typeName: string;
+      restaurantName: string;
+      restaurantBrand: string | null;
+      restaurantSector: string | null;
+      restaurantLogo: string | null;
+      installationDate: Date | null;
+      createdAt: Date;
+    }
   | { ok: false; error: string };
 
 /**
@@ -30,8 +48,20 @@ export async function generateSecurityLabel(
     const parsed = generateLabelSchema.parse(input);
 
     const [row] = await db
-      .select({ id: equipment.id, restaurantId: equipment.restaurantId })
+      .select({
+        id: equipment.id,
+        restaurantId: equipment.restaurantId,
+        assetCode: equipment.assetCode,
+        installationDate: equipment.installationDate,
+        typeName: equipmentTypes.name,
+        restaurantName: restaurants.name,
+        restaurantBrand: restaurants.brand,
+        restaurantSector: restaurants.sector,
+        restaurantLogo: restaurants.logo,
+      })
       .from(equipment)
+      .innerJoin(equipmentTypes, eq(equipment.equipmentTypeId, equipmentTypes.id))
+      .innerJoin(restaurants, eq(equipment.restaurantId, restaurants.id))
       .where(eq(equipment.id, parsed.equipmentId))
       .limit(1);
 
@@ -61,7 +91,20 @@ export async function generateSecurityLabel(
 
     revalidatePath("/labels");
     revalidatePath("/equipment");
-    return { ok: true, token, url, qrDataUrl };
+    return {
+      ok: true,
+      token,
+      url,
+      qrDataUrl,
+      assetCode: row.assetCode,
+      typeName: row.typeName,
+      restaurantName: row.restaurantName,
+      restaurantBrand: row.restaurantBrand,
+      restaurantSector: row.restaurantSector,
+      restaurantLogo: row.restaurantLogo,
+      installationDate: row.installationDate,
+      createdAt: now,
+    };
   } catch (error) {
     if (error instanceof Error) {
       return { ok: false, error: error.message };

@@ -23,6 +23,7 @@ export default async function LabelsPage() {
       .select({
         label: securityLabels,
         assetCode: equipment.assetCode,
+        installationDate: equipment.installationDate,
         typeName: equipmentTypes.name,
         restaurantName: restaurants.name,
         restaurantBrand: restaurants.brand,
@@ -61,6 +62,7 @@ export default async function LabelsPage() {
         url,
         qrDataUrl: await QRCode.toDataURL(url),
         createdAt: r.label.createdAt,
+        installationDate: r.installationDate,
       };
     })
   );

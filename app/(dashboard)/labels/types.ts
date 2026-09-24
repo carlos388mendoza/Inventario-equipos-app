@@ -11,6 +11,7 @@ export interface LabelDto {
   url: string;
   qrDataUrl: string;
   createdAt: Date;
+  installationDate: Date | null;
 }
 
 export interface LabelRestaurantOption {

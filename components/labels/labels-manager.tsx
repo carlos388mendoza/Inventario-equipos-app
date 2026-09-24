@@ -34,9 +34,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
+import { LabelPreview } from "@/components/labels/label-preview";
 import { formatDate } from "@/lib/utils";
 
 export function LabelsManager({
@@ -262,16 +262,17 @@ export function LabelsManager({
 
           {result?.ok && (
             <div className="space-y-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={result.qrDataUrl}
-                alt="Código QR de la etiqueta"
-                className="mx-auto h-48 w-48 rounded border"
+              <LabelPreview
+                data={{
+                  qrDataUrl: result.qrDataUrl,
+                  assetCode: result.assetCode,
+                  typeName: result.typeName,
+                  restaurantName: result.restaurantName,
+                  restaurantLogo: result.restaurantLogo,
+                  installationDate: result.installationDate,
+                  createdAt: result.createdAt,
+                }}
               />
-              <div className="space-y-2">
-                <Label htmlFor="label-url">URL pública</Label>
-                <Input id="label-url" value={result.url} readOnly />
-              </div>
               <div className="flex justify-end gap-2">
                 <Button asChild variant="outline" size="sm">
                   <a href={result.url} target="_blank" rel="noreferrer">
