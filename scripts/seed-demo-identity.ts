@@ -18,9 +18,9 @@ type DemoRow = {
 };
 
 const DEMO: DemoRow[] = [
-  { name: "Pizza Hut", code: "PZ01", brand: "Pizza Hut", sector: "Restaurantes", logo: "/brands/pizza-hut.svg", address: "Av. Principal 101" },
+  { name: "Pizza Hut", code: "PZ01", brand: "Pizza Hut", sector: "Restaurantes", logo: "/brands/pizza-hut.jpg", address: "Av. Principal 101" },
   { name: "KFC", code: "KF02", brand: "KFC", sector: "Restaurantes", logo: "/brands/kfc.svg", address: "Av. Principal 123" },
-  { name: "Denny" + String.fromCharCode(39) + "s", code: "DN03", brand: "Denny" + String.fromCharCode(39) + "s", sector: "Restaurantes", logo: "/brands/dennys.svg", address: "Centro Comercial" },
+  { name: "Denny" + String.fromCharCode(39) + "s", code: "DN03", brand: "Denny" + String.fromCharCode(39) + "s", sector: "Restaurantes", logo: "/brands/dennys.png", address: "Centro Comercial" },
   { name: "China Wok", code: "CW04", brand: "China Wok", sector: "Restaurantes", logo: "/brands/china-wok.svg", address: "Zona Centro" },
 ];
 

@@ -13,10 +13,10 @@ export interface RestaurantIdentityData {
 }
 
 const SIZES = {
-  sm: { box: "h-8 w-8", img: "h-8 w-8", text: "text-xs" },
-  md: { box: "h-10 w-10", img: "h-10 w-10", text: "text-sm" },
-  lg: { box: "h-14 w-14", img: "h-14 w-14", text: "text-base" },
-  xl: { box: "h-20 w-20", img: "h-20 w-20", text: "text-lg" },
+  sm: { box: "h-8 w-8", img: "max-h-8 max-w-14 p-1", text: "text-xs" },
+  md: { box: "h-10 w-10", img: "max-h-10 max-w-20 p-1.5", text: "text-sm" },
+  lg: { box: "h-14 w-14", img: "max-h-14 max-w-28 p-2", text: "text-base" },
+  xl: { box: "h-20 w-20", img: "max-h-20 max-w-40 p-2.5", text: "text-lg" },
 } as const;
 
 export type IdentitySize = keyof typeof SIZES;
@@ -53,7 +53,7 @@ export function RestaurantIdentity({
           alt={"Logo de " + title}
           width={80}
           height={80}
-          className={cn("shrink-0 rounded-lg object-contain", s.img, "bg-muted p-0.5")}
+          className={cn("shrink-0 rounded-lg bg-muted object-contain", s.img)}
           onError={() => setImgError(true)}
         />
       ) : (
