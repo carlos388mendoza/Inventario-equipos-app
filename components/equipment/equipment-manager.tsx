@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { LifecycleBadge } from "@/components/equipment/lifecycle-badge";
 import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
+import { Combobox } from "@/components/ui/combobox";
 import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { EQUIPMENT_STATUS_LABELS, ALL_EQUIPMENT_STATUS } from "@/lib/db/enums";
 import { formatDate } from "@/lib/utils";
@@ -113,19 +114,20 @@ export function EquipmentManager({
               className="lg:col-span-1"
             />
             {restaurantOptions.length > 1 && (
-              <Select value={restaurantId} onValueChange={setRestaurantId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Restaurante" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todos los restaurantes</SelectItem>
-                  {restaurantOptions.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.name} ({r.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                value={restaurantId}
+                onValueChange={setRestaurantId}
+                placeholder="Restaurante"
+                searchPlaceholder="Buscar restaurante…"
+                options={[
+                  { value: "ALL", label: "Todos los restaurantes" },
+                  ...restaurantOptions.map((r) => ({
+                    value: r.id,
+                    label: r.name,
+                    detail: r.code,
+                  })),
+                ]}
+              />
             )}
             <Select value={typeId} onValueChange={setTypeId}>
               <SelectTrigger>

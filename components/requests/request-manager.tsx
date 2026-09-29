@@ -46,6 +46,7 @@ import {
   type RequestStatus,
 } from "@/lib/db/enums";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
+import { Combobox } from "@/components/ui/combobox";
 import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { formatDateTime } from "@/lib/utils";
 
@@ -208,19 +209,21 @@ return matchesTab && matchesRestaurant && matchesQuery;
               className="sm:max-w-xs"
             />
             {isGlobalFilter && (
-              <Select value={restaurantId} onValueChange={setRestaurantId}>
-                <SelectTrigger className="sm:max-w-[220px]">
-                  <SelectValue placeholder="Restaurante" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">Todos los restaurantes</SelectItem>
-                  {restaurantOptions.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.name} ({r.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                value={restaurantId}
+                onValueChange={setRestaurantId}
+                placeholder="Restaurante"
+                searchPlaceholder="Buscar restaurante…"
+                className="sm:max-w-[220px]"
+                options={[
+                  { value: "ALL", label: "Todos los restaurantes" },
+                  ...restaurantOptions.map((r) => ({
+                    value: r.id,
+                    label: r.name,
+                    detail: r.code,
+                  })),
+                ]}
+              />
             )}
           </div>
 
