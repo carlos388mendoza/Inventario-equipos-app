@@ -78,10 +78,23 @@ export function computeLifecycle(
 export const EQUIPMENT_ACTIONS = {
   REGISTERED: "REGISTERED",
   STATUS_CHANGED: "STATUS_CHANGED",
+  /** Se conserva por filas históricas anteriores al módulo de Movimientos. */
   TRANSFERRED: "TRANSFERRED",
   ASSIGNED: "ASSIGNED",
   SERVICED: "SERVICED",
   NOTE: "NOTE",
+  /** Traslado permanente a otra unidad. */
+  MOVED: "MOVED",
+  /** Jalado: trae el equipo de vuelta a una unidad. */
+  PULLED: "PULLED",
+  /** Se creó una copia de este equipo (queda en la unidad de origen). */
+  COPIED: "COPIED",
+  /** El equipo salió en préstamo: cambia su ubicación, no su propietario. */
+  LOANED: "LOANED",
+  /** El equipo volvió de préstamo a su unidad propietaria. */
+  RETURNED: "RETURNED",
+  /** Este equipo fue sustituido por otro. */
+  REPLACED_BY: "REPLACED_BY",
 } as const;
 
 export type EquipmentAction =
@@ -94,4 +107,20 @@ export const EQUIPMENT_ACTION_LABELS: Record<EquipmentAction, string> = {
   ASSIGNED: "Asignación",
   SERVICED: "Mantenimiento",
   NOTE: "Nota",
+  MOVED: "Traslado",
+  PULLED: "Jalado",
+  COPIED: "Copia",
+  LOANED: "Préstamo",
+  RETURNED: "Devolución",
+  REPLACED_BY: "Sustitución",
 };
+
+/**
+ * Resuelve la etiqueta de una acción de historial que puede venir de una fila
+ * vieja (texto libre) o de una nueva (acciones registradas por Movimientos).
+ */
+export function equipmentActionLabel(action: string): string {
+  return (
+    EQUIPMENT_ACTION_LABELS[action as EquipmentAction] ?? action
+  );
+}
