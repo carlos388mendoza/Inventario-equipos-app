@@ -6,20 +6,10 @@ import {
   LABEL_HEIGHT,
   MARGIN,
   QR_X,
-  CONTENT_END,
-  TEXT_POSITIONS,
-  NAME_CHAR_SIZE,
-  NAME_LINE_HEIGHT,
-  NAME_MAX_LINES,
-  TYPE_CHAR_SIZE,
-  TYPE_LINE_HEIGHT,
-  TYPE_MAX_LINES,
-  DATE_CHAR_SIZE,
-  ASSET_CHAR_SIZE,
+  VERTICAL_BIAS,
+  LOGO_GAP,
+  LOGO_AREA_END,
   sanitizeZplText,
-  truncateToWidth,
-  wrapToLines,
-  formatPrintDate,
 } from "./layout";
 
 export type { ZplLogoGraphic };
@@ -47,7 +37,14 @@ function qrLayout(url: string): { magnification: number; side: number; y: number
     Math.min(QR_MAX_MAGNIFICATION, Math.floor(maxDots / modules))
   );
   const side = modules * magnification;
-  const y = Math.max(0, Math.floor((LABEL_HEIGHT - side) / 2));
+  // Centrado vertical y luego desplazado hacia abajo, sin salirse de la etiqueta.
+  const y = Math.max(
+    0,
+    Math.min(
+      LABEL_HEIGHT - side,
+      Math.floor((LABEL_HEIGHT - side) / 2) + VERTICAL_BIAS
+    )
+  );
   return { magnification, side, y };
 }
 
@@ -59,24 +56,6 @@ export function logoGraphicFor(
   const base = clean.split("/").pop() ?? "";
   const slug = base.replace(/\.[^.]+$/, "");
   return ZPL_LOGO_GRAPHICS[slug];
-}
-
-function textBlock(
-  lines: string[],
-  startX: number,
-  startY: number,
-  charSize: number,
-  lineHeight: number
-): string[] {
-  const output: string[] = [];
-  lines.forEach((line, index) => {
-    const text = sanitizeZplText(line);
-    if (!text) return;
-    output.push(`^FO${startX},${startY + index * lineHeight}`);
-    output.push(`^A0N,${charSize},${Math.round(charSize * 0.9)}`);
-    output.push(`^FD${text}^FS`);
-  });
-  return output;
 }
 
 export function buildZpl(data: ZplLabelData): string {
@@ -93,73 +72,19 @@ export function buildZpl(data: ZplLabelData): string {
   lines.push(`^BQN,2,${qr.magnification}`);
   lines.push(`^FDQA,${url}^FS`);
 
-  const contentX = QR_X + qr.side + 8;
-  const contentWidth = CONTENT_END - contentX;
-
+  // La etiqueta solo lleva QR + logo. El area del logo arranca justo despues
+  // del QR (para seguirle el ritmo) y termina en el margen derecho.
   const graphic = logoGraphicFor(data.restaurantLogo);
   if (graphic) {
-    lines.push(gfaCommand(contentX, TEXT_POSITIONS.logo.y, graphic));
+    const areaX = QR_X + qr.side + LOGO_GAP;
+    const areaWidth = Math.max(1, LOGO_AREA_END - areaX);
+    const logoX = areaX + Math.max(0, Math.round((areaWidth - graphic.width) / 2));
+    const logoY = Math.max(
+      0,
+      Math.round((LABEL_HEIGHT - graphic.height) / 2) + VERTICAL_BIAS
+    );
+    lines.push(gfaCommand(logoX, logoY, graphic));
   }
-
-  const nameLines = wrapToLines(
-    data.restaurantName,
-    contentWidth,
-    NAME_CHAR_SIZE,
-    NAME_MAX_LINES
-  );
-  lines.push(
-    ...textBlock(
-      nameLines,
-      contentX,
-      TEXT_POSITIONS.name.y,
-      NAME_CHAR_SIZE,
-      NAME_LINE_HEIGHT
-    )
-  );
-
-  const typeLines = wrapToLines(
-    data.typeName.toUpperCase(),
-    contentWidth,
-    TYPE_CHAR_SIZE,
-    TYPE_MAX_LINES
-  );
-  lines.push(
-    ...textBlock(
-      typeLines,
-      contentX,
-      TEXT_POSITIONS.type.y,
-      TYPE_CHAR_SIZE,
-      TYPE_LINE_HEIGHT
-    )
-  );
-
-  const date = data.installationDate ?? data.createdAt;
-  const dateLabel = data.installationDate ? "Instalación:" : "Generación:";
-  const dateText = `${dateLabel} ${formatPrintDate(date)}`;
-  lines.push(
-    ...textBlock(
-      [truncateToWidth(dateText, contentWidth, DATE_CHAR_SIZE)],
-      contentX,
-      TEXT_POSITIONS.date.y,
-      DATE_CHAR_SIZE,
-      0
-    )
-  );
-
-  const assetText = truncateToWidth(
-    sanitizeZplText(data.assetCode),
-    contentWidth,
-    ASSET_CHAR_SIZE
-  );
-  lines.push(
-    ...textBlock(
-      [assetText],
-      contentX,
-      TEXT_POSITIONS.asset.y,
-      ASSET_CHAR_SIZE,
-      0
-    )
-  );
 
   lines.push("^XZ");
   return `${lines.join("\n")}\n`;

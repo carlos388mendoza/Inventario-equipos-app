@@ -7,15 +7,57 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const BRANDS_DIR = join(ROOT, "public", "brands");
 const OUT_FILE = join(ROOT, "lib", "zpl", "graphics.generated.ts");
 
-const MAX_WIDTH = 96;
-const MAX_HEIGHT = 40;
+// Caja maxima del logo en la etiqueta. Debe coincidir con LOGO_MAX_WIDTH /
+// LOGO_MAX_HEIGHT de lib/zpl/layout.ts: el bitmap se imprime 1:1 en dots, asi
+// que el generador tiene que emitirlo ya al tamano final de impresion.
+const MAX_WIDTH = 194;
+const MAX_HEIGHT = 110;
 
-function isDarkMark(r, g, b) {
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  if (lum <= 110) return true;
-  return r >= 100 && r >= g && r >= b && max - min > 45 && r - b >= 15;
+/** Extensiones de logo aceptadas, en orden de prioridad por slug. */
+const SOURCE_RANK = /\.(png|jpe?g|svg)$/i;
+const RASTER = /\.(png|jpe?g)$/i;
+
+/**
+ * Umbral de luminancia para decidir que se imprime en negro.
+ *
+ * El ZPL es monocromo de 1 bit: no existe gris, asi que la unica decision
+ * posible es luminancia. La version anterior anadia una regla ad-hoc que
+ * marcaba cualquier pixel rojizo (r >= 100 && max-min > 45 && r-b >= 15).
+ * Esa regla tambien capturaba los rojos claros y de alto contraste, y por eso
+ * el logotipo de Denny's (rojo 240,50,54 sobre fondo dorado) salia como un
+ * bloque negro solido en lugar de como lettering. Se eliminó: basta la
+ * luminancia, y el alfa ya se resuelve con flatten() sobre blanco.
+ */
+const DARK_LUMINANCE = 110;
+
+/**
+ * Binarizacion por slug para los logos que no son "trazo oscuro sobre fondo
+ * transparente" sino una figura de color claro.
+ *
+ * En "badge" la figura lleva un anillo exterior mas oscuro que su relleno, y
+ * con DARK_LUMINANCE (110) el anillo queda en blanco: la figura desaparece y
+ * solo se imprime el lettering. El anillo y el relleno estan separados por un
+ * valle claro de luminancia, asi que basta un umbral mas alto que incluya el
+ * anillo y deje el relleno en blanco, en vez de rellenar toda la figura.
+ *
+ * Mediciones sobre public/brands/dennys.png a 165x110 (RGB compuesto):
+ *   anillo exterior  rgb(253,192,45)  -> luminancia 194
+ *   relleno interior rgb(255,222,35)  -> luminancia 216
+ *   lettering        rgb(237,51,56)   -> luminancia  91
+ * El valle cae en ~205: por debajo entra el anillo y el lettering, por encima
+ * queda solo el relleno dorado.
+ *
+ * Los logos con trazo oscuro (pizza-hut, china-wok, kfc) no aparecen aqui y
+ * siguen usando DARK_LUMINANCE sin cambios.
+ */
+const BADGE_LUMINANCE = 205;
+
+const BINARIZATION_BY_SLUG = {
+  dennys: BADGE_LUMINANCE,
+};
+
+function isDarkMark(r, g, b, maxLuminance) {
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b <= maxLuminance;
 }
 
 function encodeGfaBits(width, height, pixels) {
@@ -58,9 +100,10 @@ async function processBrand(file) {
 
   const total = info.width * info.height;
   const raw = new Uint8Array(data);
+  const maxLuminance = BINARIZATION_BY_SLUG[slug] ?? DARK_LUMINANCE;
   const pixels = new Uint8Array(total);
   for (let i = 0; i < total; i += 1) {
-    pixels[i] = isDarkMark(raw[i * 3], raw[i * 3 + 1], raw[i * 3 + 2]) ? 1 : 0;
+    pixels[i] = isDarkMark(raw[i * 3], raw[i * 3 + 1], raw[i * 3 + 2], maxLuminance) ? 1 : 0;
   }
 
   const graphic = encodeGfaBits(info.width, info.height, pixels);
@@ -69,8 +112,12 @@ async function processBrand(file) {
 
 async function main() {
   const files = readdirSync(BRANDS_DIR)
-    .filter((f) => /\.(svg|png)$/i.test(f))
-    .sort();
+    .filter((f) => SOURCE_RANK.test(f))
+    .sort((a, b) => {
+      // Si un slug tiene varias fuentes, gana la raster (jpg/png) sobre el svg.
+      const rank = (f) => (RASTER.test(f) ? 0 : 1);
+      return rank(a) - rank(b) || a.localeCompare(b);
+    });
 
   if (files.length === 0) {
     console.error(`No hay archivos de logo en ${BRANDS_DIR}`);
@@ -78,7 +125,14 @@ async function main() {
   }
 
   const logos = [];
+  const seen = new Set();
   for (const file of files) {
+    const slug = basename(file, extname(file));
+    if (seen.has(slug)) {
+      console.log(`${slug}: se omite ${file} (ya existe una fuente con prioridad)`);
+      continue;
+    }
+    seen.add(slug);
     logos.push(await processBrand(file));
   }
 

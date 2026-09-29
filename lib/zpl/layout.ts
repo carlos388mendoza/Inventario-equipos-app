@@ -5,26 +5,25 @@ export const LABEL_WIDTH = Math.round(LABEL_WIDTH_MM * DOTS_PER_MM);
 export const LABEL_HEIGHT = Math.round(LABEL_HEIGHT_MM * DOTS_PER_MM);
 export const MARGIN = 14;
 export const QR_X = 14;
-export const CONTENT_X = 186;
-export const CONTENT_END = 392;
-export const LOGO_MAX_WIDTH = 96;
-export const LOGO_MAX_HEIGHT = 40;
-export const NAME_CHAR_SIZE = 20;
-export const NAME_LINE_HEIGHT = 23;
-export const NAME_MAX_LINES = 2;
-export const TYPE_CHAR_SIZE = 16;
-export const TYPE_LINE_HEIGHT = 18;
-export const TYPE_MAX_LINES = 2;
-export const DATE_CHAR_SIZE = 12;
-export const ASSET_CHAR_SIZE = 12;
 
-export const TEXT_POSITIONS = {
-  logo: { x: CONTENT_X, y: 14 },
-  name: { x: CONTENT_X, y: 60 },
-  type: { x: CONTENT_X, y: 104 },
-  date: { x: CONTENT_X, y: 140 },
-  asset: { x: CONTENT_X, y: 156 },
-} as const;
+// Zona izquierda: QR grande
+export const QR_ERROR_CORRECTION = "Q";
+export const QR_MIN_MAGNIFICATION = 2;
+export const QR_MAX_MAGNIFICATION = 10;
+export const QR_TARGET_MAGNIFICATION = 3;
+
+/**
+ * Empuja la composicion hacia abajo sin pegarla al borde superior. 5 dots son
+ * 0.6 mm: perceptible, y aun asi deja 3.6 mm de margen inferior para la Zebra.
+ */
+export const VERTICAL_BIAS = 5;
+
+// Zona derecha: logo. La etiqueta ya no imprime texto, asi que el logo ocupa
+// todo el espacio que deja el QR.
+export const LOGO_GAP = 8;
+export const LOGO_AREA_END = LABEL_WIDTH - MARGIN;
+export const LOGO_MAX_WIDTH = 194;
+export const LOGO_MAX_HEIGHT = 110;
 
 export function sanitizeZplText(value: string): string {
   return value
@@ -33,60 +32,4 @@ export function sanitizeZplText(value: string): string {
     .replace(/\^/g, " ")
     .replace(/~/g, " ")
     .trim();
-}
-
-export function truncateToWidth(
-  text: string,
-  maxWidthPx: number,
-  charSizePx: number
-): string {
-  const charWidth = Math.max(1, Math.round(charSizePx * 0.6));
-  const maxChars = Math.max(1, Math.floor(maxWidthPx / charWidth));
-  if (text.length <= maxChars) return text;
-  return `${text.slice(0, Math.max(1, maxChars - 3)).trimEnd()}...`;
-}
-
-export function wrapToLines(
-  text: string,
-  maxWidthPx: number,
-  charSizePx: number,
-  maxLines: number
-): string[] {
-  const charWidth = Math.max(1, Math.round(charSizePx * 0.6));
-  const maxChars = Math.max(1, Math.floor(maxWidthPx / charWidth));
-  if (maxLines <= 1) return [truncateToWidth(text, maxWidthPx, charSizePx)];
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (candidate.length <= maxChars || !current) {
-      current = candidate;
-    } else {
-      lines.push(current);
-      current = word;
-    }
-    if (lines.length === maxLines) break;
-  }
-  if (lines.length < maxLines && current) lines.push(current);
-  if (lines.length === 0) lines.push("");
-  for (let i = 0; i < lines.length; i += 1) {
-    if (lines[i].length > maxChars) {
-      lines[i] = truncateToWidth(lines[i], maxWidthPx, charSizePx);
-    }
-  }
-  return lines;
-}
-
-export function formatPrintDate(value: string | Date | null | undefined): string {
-  if (!value) return "-";
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return date
-    .toLocaleDateString("es-MX", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })
-    .replace(/\./g, "");
 }
