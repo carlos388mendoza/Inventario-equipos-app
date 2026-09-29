@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   equipment,
   equipmentHistory,
+  equipmentMovements,
   equipmentTypes,
   restaurants,
   securityLabels,
@@ -12,9 +13,14 @@ import {
 } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/session";
 import { resolveScope, assertRestaurantAccess } from "@/lib/equipment/scope";
-import { computeLifecycle, EQUIPMENT_ACTION_LABELS } from "@/lib/equipment/lifecycle";
-import { ROLES, EQUIPMENT_STATUS_LABELS } from "@/lib/db/enums";
+import {
+  computeLifecycle,
+  equipmentActionLabel,
+} from "@/lib/equipment/lifecycle";
+import { ROLES, EQUIPMENT_STATUS_LABELS, EQUIPMENT_MOVEMENT_TYPE_LABELS } from "@/lib/db/enums";
+import { isOnLoan } from "@/lib/equipment/movements";
 import { EquipmentActions } from "@/components/equipment/equipment-actions";
+import { DetailMovementActions } from "@/components/movements/detail-movement-actions";
 import { LifecycleBadge } from "@/components/equipment/lifecycle-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -50,6 +56,7 @@ export default async function EquipmentDetailPage({
       typeLife: equipmentTypes.usefulLifeMonths,
       restaurantName: restaurants.name,
       restaurantCode: restaurants.code,
+      restaurantLogo: restaurants.logo,
     })
     .from(equipment)
     .innerJoin(equipmentTypes, eq(equipment.equipmentTypeId, equipmentTypes.id))
@@ -61,7 +68,7 @@ export default async function EquipmentDetailPage({
   const row = rows[0];
   assertRestaurantAccess(scope, row.e.restaurantId);
 
-  const [labelRows, history] = await Promise.all([
+  const [labelRows, history, movements, allRestaurants] = await Promise.all([
     db
       .select({ token: securityLabels.token })
       .from(securityLabels)
@@ -79,7 +86,66 @@ export default async function EquipmentDetailPage({
       .leftJoin(userTable, eq(equipmentHistory.performedBy, userTable.id))
       .where(eq(equipmentHistory.equipmentId, id))
       .orderBy(desc(equipmentHistory.createdAt)),
+    // El libro de movimientos, que es distinto del historial: aquí están los
+    // orígenes, los destinos y el equipo par. Un equipo de movements puede no
+    // estar en la fila `equipment_history` si fue el par de una copia, así que
+    // se consultan los dos lados.
+    db
+      .select({
+        id: equipmentMovements.id,
+        type: equipmentMovements.type,
+        assetCode: equipmentMovements.assetCode,
+        fromName: restaurants.name,
+        reason: equipmentMovements.reason,
+        notes: equipmentMovements.notes,
+        createdAt: equipmentMovements.createdAt,
+        performedByName: userTable.name,
+      })
+      .from(equipmentMovements)
+      .leftJoin(restaurants, eq(equipmentMovements.fromRestaurantId, restaurants.id))
+      .leftJoin(userTable, eq(equipmentMovements.performedBy, userTable.id))
+      .where(eq(equipmentMovements.equipmentId, id))
+      .orderBy(desc(equipmentMovements.createdAt)),
+    isManager
+      ? db
+          .select({
+            id: restaurants.id,
+            name: restaurants.name,
+            code: restaurants.code,
+            logo: restaurants.logo,
+          })
+          .from(restaurants)
+          .orderBy(asc(restaurants.name))
+      : Promise.resolve([]),
   ]);
+
+  const restaurantOptions = allRestaurants.map((r) => ({
+    id: r.id,
+    name: r.name,
+    code: r.code,
+    logo: r.logo,
+  }));
+
+  const onLoan = isOnLoan({
+    restaurantId: row.e.restaurantId,
+    ownerRestaurantId: row.e.ownerRestaurantId,
+  });
+
+  const movementOption = {
+    id: row.e.id,
+    assetCode: row.e.assetCode,
+    serialNumber: row.e.serialNumber,
+    typeName: row.typeName,
+    restaurantId: row.e.restaurantId,
+    restaurantName: row.restaurantName,
+    restaurantCode: row.restaurantCode,
+    restaurantLogo: row.restaurantLogo,
+    ownerRestaurantId: row.e.ownerRestaurantId,
+    ownerRestaurantName: null,
+    ownerRestaurantLogo: null,
+    status: row.e.status,
+    isOnLoan: onLoan,
+  };
 
   const lifecycle = computeLifecycle(
     row.typeLife,
@@ -87,7 +153,7 @@ export default async function EquipmentDetailPage({
   );
 
   return (
-    <main className="p-6">
+    <main className="p-4 sm:p-6">
       <div className="mx-auto max-w-3xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -96,9 +162,13 @@ export default async function EquipmentDetailPage({
               {row.typeName} · {row.restaurantName} ({row.restaurantCode})
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {isManager && (
               <>
+                <DetailMovementActions
+                  equipment={movementOption}
+                  restaurants={restaurantOptions}
+                />
                 <Button asChild variant="outline">
                   <Link href={`/equipment/${id}/edit`}>Editar</Link>
                 </Button>
@@ -131,14 +201,28 @@ export default async function EquipmentDetailPage({
                       row.e.status === "ACTIVE"
                         ? "default"
                         : row.e.status === "DAMAGED"
-                        ? "destructive"
-                        : "secondary"
+                          ? "destructive"
+                          : "secondary"
                     }
                   >
                     {EQUIPMENT_STATUS_LABELS[row.e.status] ?? row.e.status}
                   </Badge>
                 </dd>
               </div>
+              {onLoan && (
+                <div>
+                  <dt className="text-sm text-muted-foreground">Préstamo</dt>
+                  <dd>
+                    <Badge variant="secondary">
+                      Reside en {row.restaurantName} ({row.restaurantCode})
+                    </Badge>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Sigue perteneciendo a su unidad propietaria. La devolución lo
+                      devuelve allí.
+                    </p>
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt className="text-sm text-muted-foreground">Vida útil</dt>
                 <dd>
@@ -205,8 +289,7 @@ export default async function EquipmentDetailPage({
                   <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
                   <div className="min-w-0">
                     <p className="text-sm font-medium">
-                      {EQUIPMENT_ACTION_LABELS[h.action as keyof typeof EQUIPMENT_ACTION_LABELS] ??
-                        h.action}
+                      {equipmentActionLabel(h.action)}
                     </p>
                     {h.description && (
                       <p className="text-sm text-muted-foreground">
@@ -221,6 +304,67 @@ export default async function EquipmentDetailPage({
                 </li>
               ))}
             </ol>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Movimientos</CardTitle>
+            <CardDescription>
+              Traslados, copias, préstamos, devoluciones y sustituciones en los
+              que participa este equipo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {movements.length === 0 && (
+              <p className="text-center text-sm text-muted-foreground">
+                Este equipo todavía no registra movimientos.
+              </p>
+            )}
+            {movements.length > 0 && (
+              <div className="overflow-x-auto rounded-md border">
+                <table className="w-full min-w-[34rem] text-sm">
+                  <thead className="bg-muted/50 text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium">Fecha</th>
+                      <th className="px-4 py-2 text-left font-medium">
+                        Operación
+                      </th>
+                      <th className="px-4 py-2 text-left font-medium">Origen</th>
+                      <th className="px-4 py-2 text-left font-medium">Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movements.map((m) => (
+                      <tr key={m.id} className="border-t">
+                        <td className="whitespace-nowrap px-4 py-2 text-xs">
+                          {formatDateTime(m.createdAt)}
+                        </td>
+                        <td className="px-4 py-2">
+                          <Badge variant="secondary">
+                            {EQUIPMENT_MOVEMENT_TYPE_LABELS[m.type] ?? m.type}
+                          </Badge>
+                          <span className="mt-1 block font-mono text-xs">
+                            {m.assetCode}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-xs">
+                          {m.fromName ?? "—"}
+                        </td>
+                        <td className="px-4 py-2 text-xs">
+                          {m.reason ?? "—"}
+                          {m.notes ? (
+                            <span className="block text-muted-foreground">
+                              {m.notes}
+                            </span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
