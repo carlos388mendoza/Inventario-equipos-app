@@ -263,24 +263,31 @@ export function LabelsManager({
                         showSector={false}
                       />
                     </td>
-                    <td className="px-4 py-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={l.qrDataUrl}
-                        alt={`QR de ${l.assetCode}`}
-                        className="h-12 w-12 rounded border"
-                      />
+<td className="px-4 py-2">
+                      {/* El QR enlaza a la página pública: ocupa el mismo
+                          espacio y elimina el botón "Página pública" de la
+                          fila. */}
+                      <a
+                        href={l.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`Abrir la página pública de ${l.assetCode}`}
+                        title="Abrir página pública"
+                        className="inline-block"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={l.qrDataUrl}
+                          alt={`QR de ${l.assetCode}`}
+                          className="h-12 w-12 rounded border"
+                        />
+                      </a>
                     </td>
                     <td className="px-4 py-2 text-muted-foreground">
                       {formatDate(l.createdAt)}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <div className="inline-flex gap-2">
-                        <Button asChild variant="outline" size="sm">
-                          <a href={l.url} target="_blank" rel="noreferrer">
-                            Página pública
-                          </a>
-                        </Button>
+<div className="inline-flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
