@@ -22,6 +22,20 @@
       "when": 1790123210140,
       "tag": "0002_complete_thanos",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1790359736738,
+      "tag": "0003_hot_lady_mastermind",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790370317183,
+      "tag": "0004_sour_husk",
+      "breakpoints": true
     }
   ]
 }

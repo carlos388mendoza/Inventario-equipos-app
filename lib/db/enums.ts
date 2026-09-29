@@ -55,6 +55,66 @@ export const EQUIPMENT_STATUS_LABELS: Record<EquipmentStatus, string> = {
 export const ALL_EQUIPMENT_STATUS: EquipmentStatus[] =
   Object.values(EQUIPMENT_STATUS);
 
+// ─── Movimientos de inventario ──────────────────────────────────────────────
+/**
+ * Tipos de movimiento de un equipo entre unidades.
+ *
+ * `TRANSFER` es permanente (el equipo pasa a ser de la unidad destino).
+ * `PULL` también es permanente: la diferencia es de intención, "jalar" significa
+ * traer el equipo de vuelta a una unidad en lugar de enviarlo.
+ * `LOAN_OUT` y `LOAN_RETURN` son el préstamo y su devolución: el propietario no
+ * cambia, solo la ubicación, y por eso el equipo mantiene `ownerRestaurantId`.
+ */
+export const EQUIPMENT_MOVEMENT_TYPES = {
+  TRANSFER: "TRANSFER",
+  COPY: "COPY",
+  PULL: "PULL",
+  LOAN_OUT: "LOAN_OUT",
+  LOAN_RETURN: "LOAN_RETURN",
+  REPLACEMENT: "REPLACEMENT",
+} as const;
+
+export type EquipmentMovementType =
+  (typeof EQUIPMENT_MOVEMENT_TYPES)[keyof typeof EQUIPMENT_MOVEMENT_TYPES];
+
+export const ALL_EQUIPMENT_MOVEMENT_TYPES: EquipmentMovementType[] =
+  Object.values(EQUIPMENT_MOVEMENT_TYPES);
+
+export const EQUIPMENT_MOVEMENT_TYPE_LABELS: Record<
+  EquipmentMovementType,
+  string
+> = {
+  TRANSFER: "Traslado",
+  COPY: "Copia",
+  PULL: "Jalado",
+  LOAN_OUT: "Préstamo",
+  LOAN_RETURN: "Devolución",
+  REPLACEMENT: "Sustitución",
+};
+
+/** Etiquetas cortas para chips y tablas densas. */
+export const EQUIPMENT_MOVEMENT_TYPE_SHORT_LABELS: Record<
+  EquipmentMovementType,
+  string
+> = {
+  TRANSFER: "Traslado",
+  COPY: "Copia",
+  PULL: "Jalado",
+  LOAN_OUT: "Préstamo",
+  LOAN_RETURN: "Devolución",
+  REPLACEMENT: "Sustitución",
+};
+
+/** Valida en runtime un tipo de movimiento vindo del cliente o de la DB. */
+export function isEquipmentMovementType(
+  value: unknown
+): value is EquipmentMovementType {
+  return (
+    typeof value === "string" &&
+    (ALL_EQUIPMENT_MOVEMENT_TYPES as string[]).includes(value)
+  );
+}
+
 // ─── Estados de solicitud ───────────────────────────────────────────────────
 export const REQUEST_STATUS = {
   PENDING: "PENDING",
@@ -113,3 +173,43 @@ export const REQUEST_PRIORITY_LABELS: Record<RequestPriority, string> = {
 
 export const ALL_REQUEST_PRIORITY: RequestPriority[] =
   Object.values(REQUEST_PRIORITY);
+
+// ─── Formatos de inventario ─────────────────────────────────────────────────
+
+/**
+ * Los documentos de inventario entregados no comparten estructura, así que el
+ * sistema representa los dos formatos por separado en vez de forzar uno solo.
+ */
+export const INVENTORY_FORMAT = {
+  /**
+   * Una fila por equipo físico, con identidad propia (activo, serie, técnico
+   * de apertura). Es el formato de INVENTARIO PH01.xlsx y se guarda en la tabla
+   * `equipment`, de modo que cada equipo puede tener etiqueta, QR y solicitudes.
+   */
+  PER_ASSET: "PER_ASSET",
+  /**
+   * Una fila por rubro, con cantidad y valor total de la línea, sin identidad
+   * por unidad. Es el formato de DENNYS 19 - EQUIPO SISTEMAS (DNS19.xlsx) y se
+   * guarda en `equipment_groups`: un agregado no es un equipo individual, por
+   * lo que no puede vivir en `equipment` sin perder información.
+   */
+  AGGREGATE: "AGGREGATE",
+} as const;
+
+export type InventoryFormat =
+  (typeof INVENTORY_FORMAT)[keyof typeof INVENTORY_FORMAT];
+
+export const INVENTORY_FORMAT_LABELS: Record<InventoryFormat, string> = {
+  [INVENTORY_FORMAT.PER_ASSET]: "Por equipo",
+  [INVENTORY_FORMAT.AGGREGATE]: "Agregado por rubro",
+};
+
+export const ALL_INVENTORY_FORMATS: InventoryFormat[] =
+  Object.values(INVENTORY_FORMAT);
+
+/**
+ * Marcas cuyo inventario se describe con el formato agregado por rubro
+ * (DNS19.xlsx). Se conservan separadas del formato por activo de INVENTARIO
+ * PH01.xlsx: Denny's nunca se mezcla con Pizza Hut / KFC / China Wok.
+ */
+export const AGGREGATE_INVENTORY_BRANDS = ["Denny's"] as const;
