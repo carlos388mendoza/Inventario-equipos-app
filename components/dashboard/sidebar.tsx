@@ -11,6 +11,17 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { GrupoComidasMark } from "@/components/brand/grupo-comidas-mark";
 
 /**
@@ -39,7 +50,6 @@ export function DashboardSidebar({
   email: string;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const items = NAV_ITEMS.filter((item) => item.roles.includes(role));
 
@@ -51,12 +61,6 @@ export function DashboardSidebar({
   if (open && openedAt !== pathname) {
     setOpen(false);
     setOpenedAt(pathname);
-  }
-
-  function handleSignOut() {
-    void signOut();
-    router.push("/login");
-    router.refresh();
   }
 
   const initials =
@@ -111,16 +115,7 @@ export function DashboardSidebar({
               </div>
             </CardHeader>
             <CardContent className="p-3 pt-0">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={handleSignOut}
-              >
-                <LogOut className="h-4 w-4" />
-                Cerrar sesión
-              </Button>
+              <SignOutButton />
             </CardContent>
           </Card>
         </div>
@@ -187,21 +182,63 @@ export function DashboardSidebar({
                   </p>
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-3 w-full"
-                onClick={handleSignOut}
-              >
-                <LogOut className="h-4 w-4" />
-                Cerrar sesión
-              </Button>
+              <div className="mt-3">
+                <SignOutButton />
+              </div>
             </div>
           </SheetContent>
         </Sheet>
       </div>
     </>
+  );
+}
+
+/**
+ * Botón de cierre de sesión con confirmación.
+ *
+ * Antes de la confirmación, un toque en "Cerrar sesión" cerraba la sesión al
+ * instante; un toque accidental obligaba a volver a entrar. Ahora pide un
+ * segundo paso explícito que además evita el signOut en mitad de un flujo.
+ */
+function SignOutButton() {
+  const router = useRouter();
+  const [open, setOpen] = React.useState(false);
+
+  function confirmSignOut() {
+    void signOut();
+    router.push("/login");
+    router.refresh();
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full"
+        >
+          <LogOut className="h-4 w-4" />
+          Cerrar sesión
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>¿Cerrar sesión?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Volverás a la pantalla de acceso y tendrás que iniciar sesión de
+            nuevo para entrar.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmSignOut}>
+            Cerrar sesión
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
