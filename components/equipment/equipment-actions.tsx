@@ -30,6 +30,7 @@ import {
   ALL_EQUIPMENT_STATUS,
   EQUIPMENT_STATUS_LABELS,
 } from "@/lib/db/enums";
+import { useMutationSync } from "@/lib/sync/use-tab-sync";
 
 export function EquipmentActions({
   equipmentId,
@@ -44,6 +45,7 @@ export function EquipmentActions({
   const [comment, setComment] = React.useState("");
   const [note, setNote] = React.useState("");
   const [submitting, startSubmit] = useTransition();
+  const { refreshAndBroadcast } = useMutationSync();
 
   function openStatus() {
     setNewStatus(currentStatus);
@@ -65,7 +67,7 @@ export function EquipmentActions({
       }
       toast.success("Estado actualizado.");
       setStatusOpen(false);
-      window.location.reload();
+      refreshAndBroadcast();
     });
   }
 
@@ -80,7 +82,7 @@ export function EquipmentActions({
       toast.success("Nota registrada.");
       setNoteOpen(false);
       setNote("");
-      window.location.reload();
+      refreshAndBroadcast();
     });
   }
 

@@ -45,6 +45,7 @@ import {
   REQUEST_STATUS_LABELS,
   type RequestStatus,
 } from "@/lib/db/enums";
+import { useMutationSync } from "@/lib/sync/use-tab-sync";
 import { formatDateTime } from "@/lib/utils";
 
 function statusBadgeVariant(status: RequestStatus) {
@@ -83,7 +84,9 @@ export function RequestManager({
   );
   const [newStatus, setNewStatus] = React.useState<RequestStatus | "">("");
   const [comment, setComment] = React.useState("");
+
   const [submitting, startSubmit] = useTransition();
+  const { refreshAndBroadcast } = useMutationSync();
 
   const isGlobalFilter = restaurantOptions.length > 1;
 
@@ -123,7 +126,7 @@ export function RequestManager({
       }
       toast.success("Estado actualizado.");
       setStatusTarget(null);
-      window.location.reload();
+      refreshAndBroadcast();
     });
   }
 
@@ -283,7 +286,7 @@ export function RequestManager({
             currentRestaurantId={currentRestaurantId}
             onDone={() => {
               setCreateOpen(false);
-              window.location.reload();
+              refreshAndBroadcast();
             }}
           />
         </DialogContent>

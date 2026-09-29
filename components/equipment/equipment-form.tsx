@@ -8,6 +8,7 @@ import {
   createEquipment,
   updateEquipment,
 } from "@/app/(dashboard)/equipment/actions";
+import { useMutationSync } from "@/lib/sync/use-tab-sync";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +58,7 @@ export function EquipmentForm({
 }) {
   const router = useRouter();
   const [submitting, startSubmit] = useTransition();
+  const { broadcastOnly } = useMutationSync();
 
   const [form, setForm] = React.useState({
     assetCode: initial?.assetCode ?? "",
@@ -96,6 +98,9 @@ export function EquipmentForm({
         return;
       }
       toast.success(equipmentId ? "Equipo actualizado." : "Equipo registrado.");
+      // La navegación ya trae los datos frescos de la ruta destino; aquí solo
+      // se avisa al resto de pestañas.
+      broadcastOnly();
       router.push(
         equipmentId ? `/equipment/${equipmentId}` : "/equipment"
       );

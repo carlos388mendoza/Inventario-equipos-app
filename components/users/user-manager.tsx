@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ROLES, ROLE_LABELS } from "@/lib/db/enums";
+import { useMutationSync } from "@/lib/sync/use-tab-sync";
 
 const ROLE_OPTIONS = Object.values(ROLES) as (keyof typeof ROLE_LABELS)[];
 
@@ -69,7 +70,9 @@ export function UserManager({
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<UserDto | null>(null);
   const [form, setForm] = React.useState<FormState>(EMPTY_FORM);
+
   const [submitting, startSubmit] = useTransition();
+  const { refreshAndBroadcast } = useMutationSync();
 
   function openCreate() {
     setEditing(null);
@@ -110,7 +113,7 @@ export function UserManager({
       }
       toast.success(editing ? "Usuario actualizado." : "Usuario creado.");
       setDialogOpen(false);
-      window.location.reload();
+      refreshAndBroadcast();
     });
   }
 
@@ -127,7 +130,7 @@ export function UserManager({
       toast.success(
         user.active ? "Usuario desactivado." : "Usuario activado."
       );
-      window.location.reload();
+      refreshAndBroadcast();
     });
   }
 

@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { useMutationSync } from "@/lib/sync/use-tab-sync";
 import { formatDate } from "@/lib/utils";
 
 const EMPTY_FORM = { name: "", code: "", address: "" };
@@ -47,7 +48,9 @@ export function RestaurantManager({
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<RestaurantDto | null>(null);
   const [form, setForm] = React.useState(EMPTY_FORM);
+
   const [submitting, startSubmit] = useTransition();
+  const { refreshAndBroadcast } = useMutationSync();
 
   function openCreate() {
     setEditing(null);
@@ -77,7 +80,7 @@ export function RestaurantManager({
       }
       toast.success(editing ? "Restaurante actualizado." : "Restaurante creado.");
       setDialogOpen(false);
-      window.location.reload();
+      refreshAndBroadcast();
     });
   }
 
@@ -92,7 +95,7 @@ export function RestaurantManager({
         return;
       }
       toast.success(restaurant.active ? "Restaurante desactivado." : "Restaurante activado.");
-      window.location.reload();
+      refreshAndBroadcast();
     });
   }
 

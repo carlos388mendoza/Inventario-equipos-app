@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { useMutationSync } from "@/lib/sync/use-tab-sync";
 import { formatDate } from "@/lib/utils";
 
 const EMPTY_FORM = { name: "", description: "", usefulLifeMonths: 36 };
@@ -46,7 +47,9 @@ export function EquipmentTypeManager({
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<EquipmentTypeDto | null>(null);
   const [form, setForm] = React.useState(EMPTY_FORM);
+
   const [submitting, startSubmit] = useTransition();
+  const { refreshAndBroadcast } = useMutationSync();
 
   function openCreate() {
     setEditing(null);
@@ -83,7 +86,7 @@ export function EquipmentTypeManager({
         editing ? "Tipo de equipo actualizado." : "Tipo de equipo creado."
       );
       setDialogOpen(false);
-      window.location.reload();
+      refreshAndBroadcast();
     });
   }
 
@@ -100,7 +103,7 @@ export function EquipmentTypeManager({
       toast.success(
         type.active ? "Tipo desactivado." : "Tipo activado."
       );
-      window.location.reload();
+      refreshAndBroadcast();
     });
   }
 
