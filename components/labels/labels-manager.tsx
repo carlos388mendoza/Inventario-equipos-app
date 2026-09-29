@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
 import {
@@ -39,6 +40,8 @@ import { Printer } from "lucide-react";
 import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import { LabelPreview } from "@/components/labels/label-preview";
 import { PrintPanel, type LabelPrintData } from "@/components/labels/print-panel";
+import { PrintQueue } from "@/components/labels/print-queue";
+import { useMutationSync } from "@/lib/sync/use-tab-sync";
 import { formatDate } from "@/lib/utils";
 
 function toPrintData(input: {
@@ -79,7 +82,42 @@ export function LabelsManager({
   const [rowToPrint, setRowToPrint] = React.useState<LabelPrintData | null>(
     null
   );
+  // Selección para imprimir en lote. Guarda ids, no objetos: así un refresh del
+  // router no puede dejar seleccionados datos viejos.
+  const [selectedIds, setSelectedIds] = React.useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const [queueOpen, setQueueOpen] = React.useState(false);
+
   const [submitting, startSubmit] = useTransition();
+  const router = useRouter();
+  const { refreshAndBroadcast, broadcastOnly } = useMutationSync();
+
+  // El orden enviado es el orden de la tabla, no el de los clics.
+  const queuedLabels = React.useMemo(
+    () => initial.filter((l) => selectedIds.has(l.id)).map(toPrintData),
+    [initial, selectedIds]
+  );
+  const allSelected = initial.length > 0 && selectedIds.size === initial.length;
+
+  function toggleOne(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelectedIds((current) =>
+      current.size === initial.length ? new Set() : new Set(initial.map((l) => l.id))
+    );
+  }
+
 
   const candidateEquipment = equipmentOptions.filter(
     (e) => !restaurantId || e.restaurantId === restaurantId
@@ -102,6 +140,10 @@ export function LabelsManager({
         return;
       }
       toast.success("Etiqueta generada.");
+      // La server action ya devuelve el RSC actualizado de esta ruta, así que
+      // aquí solo se avisa al resto de pestañas. El contador de "Etiquetas QR"
+      // del panel se actualiza sin F5.
+      broadcastOnly();
     });
   }
 
@@ -115,7 +157,7 @@ export function LabelsManager({
         return;
       }
       toast.success("Etiqueta regenerada.");
-      window.location.reload();
+      refreshAndBroadcast();
     });
   }
 
@@ -132,11 +174,45 @@ export function LabelsManager({
           </div>
           <Button onClick={openDialog}>Generar etiqueta</Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleAll}
+              disabled={initial.length === 0}
+            >
+              {allSelected ? "Deseleccionar todo" : "Seleccionar todo"}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setQueueOpen(true)}
+              disabled={selectedIds.size === 0}
+            >
+              <Printer />
+              {selectedIds.size === 0
+                ? "Imprimir seleccionadas"
+                : `Imprimir ${selectedIds.size} etiqueta(s)`}
+            </Button>
+            {selectedIds.size > 0 && (
+              <span className="text-xs text-muted-foreground">
+                {selectedIds.size} de {initial.length} seleccionada(s)
+              </span>
+            )}
+          </div>
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full min-w-[40rem] text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
+                  <th className="w-10 px-4 py-2 text-left font-medium">
+                    <input
+                      type="checkbox"
+                      aria-label="Seleccionar todas las etiquetas"
+                      className="h-4 w-4 accent-primary"
+                      checked={allSelected}
+                      onChange={toggleAll}
+                    />
+                  </th>
                   <th className="px-4 py-2 text-left font-medium">Equipo</th>
                   <th className="px-4 py-2 text-left font-medium">Tipo</th>
                   <th className="px-4 py-2 text-left font-medium">
@@ -153,7 +229,7 @@ export function LabelsManager({
                 {initial.length === 0 && (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={7}
                       className="px-4 py-8 text-center text-muted-foreground"
                     >
                       Aún no hay etiquetas generadas.
@@ -162,6 +238,15 @@ export function LabelsManager({
                 )}
                 {initial.map((l) => (
                   <tr key={l.id} className="border-t">
+                    <td className="px-4 py-2">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-primary"
+                        aria-label={`Seleccionar la etiqueta de ${l.assetCode}`}
+                        checked={selectedIds.has(l.id)}
+                        onChange={() => toggleOne(l.id)}
+                      />
+                    </td>
                     <td className="px-4 py-2 font-mono text-xs font-medium">
                       {l.assetCode}
                     </td>
@@ -226,7 +311,7 @@ export function LabelsManager({
         open={dialogOpen}
         onOpenChange={(open) => {
           setDialogOpen(open);
-          if (!open) window.location.reload();
+          if (!open) router.refresh();
         }}
       >
         <DialogContent>
@@ -351,6 +436,29 @@ export function LabelsManager({
             </DialogDescription>
           </DialogHeader>
           {rowToPrint && <PrintPanel label={rowToPrint} />}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={queueOpen}
+        onOpenChange={(open) => {
+          setQueueOpen(open);
+          // Al cerrar se descarta la selección: evita reimprimir por accidente
+          // el mismo lote en la siguiente operación.
+          if (!open) setSelectedIds(new Set());
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Imprimir varias etiquetas</DialogTitle>
+            <DialogDescription>
+              Se enviarán {queuedLabels.length} etiqueta(s) a la Zebra ZD230 a
+              través de Zebra Browser Print, en el orden de la tabla. Cada
+              etiqueta conserva su propio QR. El envío no es automático: revisa
+              el progreso antes de cerrar.
+            </DialogDescription>
+          </DialogHeader>
+          {queueOpen && <PrintQueue labels={queuedLabels} />}
         </DialogContent>
       </Dialog>
     </div>

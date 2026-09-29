@@ -13,12 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  BrowserPrintClient,
-  BrowserPrintError,
-  type PrinterReadiness,
-  type ZplPrinter,
-} from "@/components/labels/browser-print";
+import { printerErrorMessage, usePrinterSession } from "@/components/labels/use-printer-session";
 import { buildZpl, type ZplLabelData } from "@/lib/zpl/builder";
 
 export interface LabelPrintData {
@@ -32,79 +27,19 @@ export interface LabelPrintData {
   createdAt: string | Date;
 }
 
-type Phase = "idle" | "detecting" | "ready" | "no-printers" | "unavailable";
-
-function messageOf(error: unknown): string {
-  if (error instanceof BrowserPrintError) return error.message;
-  if (error instanceof Error) return error.message;
-  return "Ocurrió un error inesperado.";
-}
-
 export function PrintPanel({ label }: { label: LabelPrintData }) {
-  const [client] = React.useState(() => new BrowserPrintClient());
-  const [phase, setPhase] = React.useState<Phase>("idle");
-  const [printers, setPrinters] = React.useState<ZplPrinter[]>([]);
-  const [selected, setSelected] = React.useState<ZplPrinter | null>(null);
-  const [message, setMessage] = React.useState<string | null>(null);
+  const session = usePrinterSession();
+  const { client, phase, printers, selected, readiness, message, busy, setMessage, setReadiness } = session;
   const [showZpl, setShowZpl] = React.useState(false);
-  const [readiness, setReadiness] = React.useState<PrinterReadiness | null>(null);
-  const [busy, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   const zpl = React.useMemo(
     () => buildZpl(label as ZplLabelData),
     [label]
   );
 
-  function handleDetect() {
-    startTransition(async () => {
-      setPhase("detecting");
-      setMessage(null);
-      setReadiness(null);
-      try {
-        const list = await client.listPrinters();
-        if (list.length === 0) {
-          setPhase("no-printers");
-          return;
-        }
-        const defaultPrinter = await client.getDefaultPrinter();
-        const initial =
-          (defaultPrinter
-            ? list.find(
-                (printer) =>
-                  printer.uid === defaultPrinter.uid &&
-                  printer.name === defaultPrinter.name
-              )
-            : undefined) ?? list[0];
-        client.selectPrinter(initial);
-        setPrinters(list);
-        setSelected(initial);
-        setPhase("ready");
-      } catch (error) {
-        setPhase("unavailable");
-        setMessage(messageOf(error));
-      }
-    });
-  }
-
-  function handleSelect(uid: string) {
-    const printer = printers.find((p) => p.uid === uid) ?? null;
-    if (!printer) return;
-    client.selectPrinter(printer);
-    setSelected(printer);
-    setReadiness(null);
-    setMessage(null);
-  }
-
   function handleCheckStatus() {
-    startTransition(async () => {
-      setMessage(null);
-      try {
-        setReadiness(await client.checkStatus());
-      } catch (error) {
-        setReadiness(null);
-        setMessage(messageOf(error));
-      }
-    });
+    session.checkStatus();
   }
 
   function handlePrint() {
@@ -129,7 +64,7 @@ export function PrintPanel({ label }: { label: LabelPrintData }) {
           "ZPL enviado a la impresora. Verifica que la etiqueta se haya impreso correctamente."
         );
       } catch (error) {
-        setMessage(messageOf(error));
+        setMessage(printerErrorMessage(error));
       }
     });
   }
@@ -137,7 +72,7 @@ export function PrintPanel({ label }: { label: LabelPrintData }) {
   return (
     <div className="space-y-3">
       {phase === "idle" && (
-        <Button variant="outline" size="sm" onClick={handleDetect}>
+        <Button variant="outline" size="sm" onClick={session.detect}>
           <Printer />
           Detectar impresoras
         </Button>
@@ -157,7 +92,7 @@ export function PrintPanel({ label }: { label: LabelPrintData }) {
             No se encontraron impresoras. Conecta la Zebra ZD230 y vuelve a
             intentar.
           </p>
-          <Button variant="outline" size="sm" onClick={handleDetect}>
+          <Button variant="outline" size="sm" onClick={session.detect}>
             <RefreshCw />
             Reintentar
           </Button>
@@ -181,7 +116,7 @@ export function PrintPanel({ label }: { label: LabelPrintData }) {
             </li>
           </ul>
           <p className="text-xs text-muted-foreground">{message}</p>
-          <Button variant="outline" size="sm" onClick={handleDetect}>
+          <Button variant="outline" size="sm" onClick={session.detect}>
             <RefreshCw />
             Reintentar
           </Button>
@@ -194,7 +129,7 @@ export function PrintPanel({ label }: { label: LabelPrintData }) {
             <Label>Impresora</Label>
             <Select
               value={selected?.uid ?? ""}
-              onValueChange={handleSelect}
+              onValueChange={session.select}
               disabled={busy}
             >
               <SelectTrigger>
