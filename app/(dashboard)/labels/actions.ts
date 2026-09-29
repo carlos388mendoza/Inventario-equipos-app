@@ -1,17 +1,11 @@
 "use server";
 
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidateLabelViews } from "@/lib/revalidate";
 import QRCode from "qrcode";
 import { requireRole } from "@/lib/auth/session";
 import { resolveScope, assertRestaurantAccess } from "@/lib/equipment/scope";
 import { db } from "@/lib/db";
-import {
-  equipment,
-  equipmentTypes,
-  restaurants,
-  securityLabels,
-} from "@/lib/db/schema";
+import { getLabelEquipmentRow, upsertSecurityLabel } from "@/lib/db/queries/labels";
 import { ROLES } from "@/lib/db/enums";
 import { generateLabelSchema } from "@/lib/validation/labels";
 import { appBaseUrl } from "@/lib/utils";
@@ -37,6 +31,10 @@ export type GenerateLabelResult =
  * Genera (o regenera) la etiqueta de seguridad de un equipo.
  * El token es un identificador opaco único que protege la URL pública:
  * el QR nunca expone información sensible.
+ *
+ * Funciona con cualquier restaurante: la identidad se lee del restaurante al que
+ * pertenece el equipo (ver `getLabelEquipmentRow`), así que no hay ninguna
+ * condición que lo limite a una unidad concreta.
  */
 export async function generateSecurityLabel(
   input: unknown
@@ -47,24 +45,7 @@ export async function generateSecurityLabel(
   try {
     const parsed = generateLabelSchema.parse(input);
 
-    const [row] = await db
-      .select({
-        id: equipment.id,
-        restaurantId: equipment.restaurantId,
-        assetCode: equipment.assetCode,
-        installationDate: equipment.installationDate,
-        typeName: equipmentTypes.name,
-        restaurantName: restaurants.name,
-        restaurantBrand: restaurants.brand,
-        restaurantSector: restaurants.sector,
-        restaurantLogo: restaurants.logo,
-      })
-      .from(equipment)
-      .innerJoin(equipmentTypes, eq(equipment.equipmentTypeId, equipmentTypes.id))
-      .innerJoin(restaurants, eq(equipment.restaurantId, restaurants.id))
-      .where(eq(equipment.id, parsed.equipmentId))
-      .limit(1);
-
+    const row = await getLabelEquipmentRow(db, parsed.equipmentId);
     if (!row) {
       return { ok: false, error: "Equipo no encontrado." };
     }
@@ -73,24 +54,12 @@ export async function generateSecurityLabel(
     const token = crypto.randomUUID().replaceAll("-", "");
     const now = new Date();
 
-    await db
-      .insert(securityLabels)
-      .values({
-        id: crypto.randomUUID(),
-        equipmentId: row.id,
-        token,
-        createdAt: now,
-      })
-      .onConflictDoUpdate({
-        target: securityLabels.equipmentId,
-        set: { token },
-      });
+    await upsertSecurityLabel(db, row.id, token, now);
 
     const url = `${appBaseUrl()}/e/${token}`;
     const qrDataUrl = await QRCode.toDataURL(url);
 
-    revalidatePath("/labels");
-    revalidatePath("/equipment");
+    revalidateLabelViews();
     return {
       ok: true,
       token,

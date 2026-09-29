@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidateUserViews } from "@/lib/revalidate";
 import { createUser, revokeUserSessions } from "@/lib/auth/users";
 import { requireRole } from "@/lib/auth/session";
 import { db } from "@/lib/db";
@@ -36,7 +36,7 @@ export async function createUserAction(
       restaurantId: parsed.restaurantId || null,
     });
 
-    revalidatePath("/users");
+    revalidateUserViews();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
@@ -65,7 +65,7 @@ export async function updateUserAction(
       })
       .where(eq(userTable.id, parsed.id));
 
-    revalidatePath("/users");
+    revalidateUserViews();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
@@ -91,7 +91,7 @@ export async function toggleUserActiveAction(
       await revokeUserSessions(parsed.id);
     }
 
-    revalidatePath("/users");
+    revalidateUserViews();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {

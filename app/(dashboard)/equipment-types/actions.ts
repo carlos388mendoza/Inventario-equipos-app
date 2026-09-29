@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidateEquipmentTypeViews } from "@/lib/revalidate";
 import { requireRole } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { equipmentTypes } from "@/lib/db/schema";
@@ -48,7 +48,7 @@ export async function createEquipmentType(
       updatedAt: now,
     });
 
-    revalidatePath("/equipment-types");
+    revalidateEquipmentTypeViews();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
@@ -86,7 +86,7 @@ export async function updateEquipmentType(
       })
       .where(eq(equipmentTypes.id, id));
 
-    revalidatePath("/equipment-types");
+    revalidateEquipmentTypeViews();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
@@ -108,7 +108,7 @@ export async function toggleEquipmentTypeActive(
       .set({ active: parsed.active, updatedAt: new Date() })
       .where(eq(equipmentTypes.id, parsed.id));
 
-    revalidatePath("/equipment-types");
+    revalidateEquipmentTypeViews();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {

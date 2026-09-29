@@ -1,7 +1,7 @@
 "use server";
 
 import { eq, or } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidateRestaurantViews } from "@/lib/revalidate";
 import { requireRole } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { restaurants } from "@/lib/db/schema";
@@ -56,7 +56,7 @@ export async function createRestaurant(
       updatedAt: now,
     });
 
-    revalidatePath("/restaurants");
+    revalidateRestaurantViews();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
@@ -102,7 +102,7 @@ export async function updateRestaurant(
       })
       .where(eq(restaurants.id, id));
 
-    revalidatePath("/restaurants");
+    revalidateRestaurantViews();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
@@ -124,7 +124,7 @@ export async function toggleRestaurantActive(
       .set({ active: parsed.active, updatedAt: new Date() })
       .where(eq(restaurants.id, parsed.id));
 
-    revalidatePath("/restaurants");
+    revalidateRestaurantViews();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {

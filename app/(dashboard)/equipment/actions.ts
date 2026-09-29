@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { equipment, equipmentHistory } from "@/lib/db/schema";
 import { ROLES } from "@/lib/db/enums";
 import { resolveScope, assertRestaurantAccess } from "@/lib/equipment/scope";
+import { revalidateEquipmentViews } from "@/lib/revalidate";
 import { EQUIPMENT_ACTIONS } from "@/lib/equipment/lifecycle";
 import {
   equipmentInputSchema,
@@ -86,8 +87,7 @@ export async function createEquipment(
       performedBy: user.id,
     });
 
-    revalidatePath("/equipment");
-    revalidatePath("/restaurants");
+    revalidateEquipmentViews();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
@@ -144,8 +144,7 @@ export async function updateEquipment(
       performedBy: user.id,
     });
 
-    revalidatePath("/equipment");
-    revalidatePath(`/equipment/${id}`);
+    revalidateEquipmentViews(id);
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
@@ -196,8 +195,7 @@ export async function changeEquipmentStatus(
       performedBy: user.id,
     });
 
-    revalidatePath("/equipment");
-    revalidatePath(`/equipment/${row.id}`);
+    revalidateEquipmentViews(row.id);
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
@@ -236,6 +234,7 @@ export async function addEquipmentNote(
       performedBy: user.id,
     });
 
+    // Una nota solo cambia el detalle del equipo: no altera listados ni contadores.
     revalidatePath(`/equipment/${row.id}`);
     return { ok: true };
   } catch (error) {

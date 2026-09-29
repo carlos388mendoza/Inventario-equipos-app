@@ -1,7 +1,7 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { revalidateRequestViews } from "@/lib/revalidate";
 import { requireRole, requireUser } from "@/lib/auth/session";
 import { resolveScope } from "@/lib/equipment/scope";
 import { db } from "@/lib/db";
@@ -106,8 +106,7 @@ export async function createRequest(
       createdAt: now,
     });
 
-    revalidatePath("/requests");
-    revalidatePath("/my-requests");
+    revalidateRequestViews();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
@@ -160,8 +159,7 @@ export async function changeRequestStatus(
       createdAt: now,
     });
 
-    revalidatePath("/requests");
-    revalidatePath("/my-requests");
+    revalidateRequestViews();
     return { ok: true };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
