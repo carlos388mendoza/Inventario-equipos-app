@@ -21,21 +21,22 @@ seguridad con QR y las estadísticas.
 2. [Stack tecnológico](#stack-tecnológico)
 3. [Roles y permisos](#roles-y-permisos)
 4. [Mapa de rutas](#mapa-de-rutas)
-5. [Modelo de datos](#modelo-de-datos)
-6. [Movimientos de inventario](#movimientos-de-inventario)
-7. [Etiquetas, QR e impresión](#etiquetas-qr-e-impresión)
-8. [Inteligencia artificial](#inteligencia-artificial)
-9. [Instalación y desarrollo local](#instalación-y-desarrollo-local)
-10. [Variables de entorno](#variables-de-entorno)
-11. [Scripts disponibles](#scripts-disponibles)
-12. [Migraciones](#migraciones)
-13. [Pruebas y calidad](#pruebas-y-calidad)
-14. [SEO y exposición pública](#seo-y-exposición-pública)
-15. [Seguridad](#seguridad)
-16. [Datos actuales en producción](#datos-actuales-en-producción)
-17. [Historial: qué pasó con PH01](#historial-qué-pasó-con-ph01)
-18. [Limitaciones conocidas](#limitaciones-conocidas)
-19. [Documentación adicional](#documentación-adicional)
+5. [Estructura de archivos](#estructura-de-archivos)
+6. [Modelo de datos](#modelo-de-datos)
+7. [Movimientos de inventario](#movimientos-de-inventario)
+8. [Etiquetas, QR e impresión](#etiquetas-qr-e-impresión)
+9. [Inteligencia artificial](#inteligencia-artificial)
+10. [Instalación y desarrollo local](#instalación-y-desarrollo-local)
+11. [Variables de entorno](#variables-de-entorno)
+12. [Scripts disponibles](#scripts-disponibles)
+13. [Migraciones](#migraciones)
+14. [Pruebas y calidad](#pruebas-y-calidad)
+15. [SEO y exposición pública](#seo-y-exposición-pública)
+16. [Seguridad](#seguridad)
+17. [Datos actuales en producción](#datos-actuales-en-producción)
+18. [Historial: qué pasó con PH01](#historial-qué-pasó-con-ph01)
+19. [Limitaciones conocidas](#limitaciones-conocidas)
+20. [Documentación adicional](#documentación-adicional)
 
 ---
 
@@ -155,6 +156,44 @@ Endpoints API:
 | `/api/auth/[...all]` | Better Auth (correo + contraseña) |
 | `/api/ai/stats-agent` | ADMIN, IT_MANAGER |
 | `/api/ai/voice-request` | ADMIN, IT_MANAGER, RESTAURANT_USER (dentro de su alcance) |
+
+---
+
+## Estructura de archivos
+
+Mapa simplificado del repositorio, para orientarse antes de tocar código:
+
+```
+app/                          # Rutas de Next.js (App Router)
+  (dashboard)/                #   Panel interno: equipos, movimientos, solicitudes…
+    <seccion>/actions.ts      #   Server actions de esa sección (patrón de restaurantes)
+    <seccion>/page.tsx        #   Server Component: autoriza, consulta y pinta el manager
+  (auth)/login/               #   Formulario de acceso
+  inicio/                     #   Landing pública (`/inicio`)
+  e/[token]/                  #   Ficha pública del QR
+  api/                        #   Route handlers (auth de Better Auth, IA)
+  layout.tsx / page.tsx       #   Raíz
+components/
+  ui/                         #   Primitivas (Radix/Tailwind): button, dialog, select…
+  <area>/                     #   Feature components por dominio: equipment, labels…
+lib/
+  db/                         #   Drizzle: schema/, migrations/, queries/, enums.ts
+  auth/                       #   Better Auth (server, client, session) y users.ts
+  validation/                 #   Schemas Zod de cada acción
+  equipment/ · labels/ · restaurants/ · sync/ · zpl/
+                              #   Reglas de negocio puras y reutilizables
+  revalidate.ts               #   Rutas que se refrescan tras cada tipo de mutación
+scripts/                      #   Seed e importadores (no forman parte de la app)
+docs/                         #   Documentación por dominio (ver abajo)
+```
+
+Reglas que se mantienen a lo largo del árbol:
+
+- Server Components por defecto; `"use client"` solo donde haga falta.
+- Lógica de datos en `lib/db/queries/*`; server actions en `app/(dashboard)/*/actions.ts`.
+- Reglas de negocio en funciones puras dentro de `lib/`, para poder testearlas sin base de datos.
+- La documentación profunda vive en `docs/` y se enlaza desde la sección
+  [Documentación adicional](#documentación-adicional).
 
 ---
 
@@ -531,6 +570,6 @@ documentado en [`docs/PLANIFICACION.md`](docs/PLANIFICACION.md).
 | [`docs/ROLES-Y-SEGURIDAD.md`](docs/ROLES-Y-SEGURIDAD.md) | Profesor y desarrollador: autorización y modelo de amenazas. |
 | [`docs/IA.md`](docs/IA.md) | Desarrollador: las dos funciones de IA y su seguridad. |
 | [`docs/SEO-Y-EXPOSICION.md`](docs/SEO-Y-EXPOSICION.md) | Profesor y visitante: qué es indexable y cómo darlo de alta. |
-| [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | Desarrollador: despliegue en Vercel. |
+| [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | Desarrollador: despliegue en Vercel y rollback. |
 | [`docs/PLANIFICACION.md`](docs/PLANIFICACION.md) | Profesor: qué está pendiente y qué se descartó. |
 | [`AGENTS.md`](AGENTS.md) | Reglas del repositorio para asistentes de IA. |

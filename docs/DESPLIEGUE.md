@@ -170,3 +170,33 @@ Recomendación: antes de una migración que cambie o elimine columnas, exportar 
 contenido de las tablas afectadas. La política del proyecto es que las escrituras
 sean mínimas y siempre a través de migraciones (`drizzle-kit generate` +
 `migrate`), nunca `db:push` contra producción.
+
+---
+
+## 9. Rollback
+
+### Código
+
+Rollback inmediato en Vercel: **Deployments → última versión buena → `Redeploy`**.
+Vuelve a correr el build de ese commit con las variables actuales (recuerda que
+las `NEXT_PUBLIC_*` se congelan en build: si un rollback necesita una URL distinta
+hay que regenerar el deployment).
+
+Rollback vía git: localizar el último commit bueno (`git log --oneline`) y
+desplegarlo (nuevo pipeline o push de esa referencia). No se usa `git revert
+--hard` contra producción sin un commit nuevo desplegable detrás.
+
+### Base de datos
+
+Las migraciones son **solo hacia adelante**: una migración ya aplicada no se
+edita y no se genera una inversa automática. Si una migración nueva rompió algo:
+
+1. **Revierte el código** mientras existan datos corruptos/entrantes sin arreglar.
+2. **No borres columnas con rollback de schema.** Si la migración eliminó datos
+   que hacen falta, se restauran desde el export previo (ver
+   [Copias de seguridad](#8-copias-de-seguridad)).
+3. La corrección definitiva se hace con **una migración nueva**, no alterando la
+   que ya se aplicó.
+
+Regla de oro: migrar hacia atrás nunca se hace editando historial; se hace con un
+plan de datos y una migración nueva.
