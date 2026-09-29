@@ -75,7 +75,7 @@ export function DashboardSidebar({
   function isActiveRoute(item: NavItem) {
     return (
       pathname === item.href ||
-      (item.href !== "/dashboard" && pathname.startsWith(item.href))
+      (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"))
     );
   }
 
