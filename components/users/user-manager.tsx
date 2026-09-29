@@ -147,11 +147,15 @@ export function UserManager({
     return matchesQuery && matchesFilter;
   });
 
-  const counts = {
+const counts = {
     total: initial.length,
     active: initial.filter((u) => u.active).length,
     inactive: initial.filter((u) => !u.active).length,
   };
+
+  // El rol de restaurante queda atado a un restaurante (regla del servidor).
+  // La UI lo refleja: sin restaurante no se permite guardar.
+  const restaurantRequired = form.role === ROLES.RESTAURANT_USER;
 
   return (
     <div className="space-y-4">
@@ -335,7 +339,7 @@ export function UserManager({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
+<div className="space-y-2">
               <Label>Restaurante</Label>
               <Select
                 value={form.restaurantId}
@@ -344,10 +348,16 @@ export function UserManager({
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Sin restaurante" />
+                  <SelectValue
+                    placeholder={
+                      restaurantRequired ? "Selecciona un restaurante" : "Sin restaurante"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin restaurante</SelectItem>
+                  {!restaurantRequired && (
+                    <SelectItem value="">Sin restaurante</SelectItem>
+                  )}
                   {restaurants.map((r) => (
                     <SelectItem key={r.id} value={r.id}>
                       {r.name}
@@ -355,6 +365,12 @@ export function UserManager({
                   ))}
                 </SelectContent>
               </Select>
+              {restaurantRequired && (
+                <p className="text-xs text-muted-foreground">
+                  Requerido para el rol de restaurante: sin él no podrá crear
+                  solicitudes.
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -374,7 +390,10 @@ export function UserManager({
                   Cancelar
                 </Button>
               </DialogClose>
-              <Button type="submit" disabled={submitting}>
+<Button
+                type="submit"
+                disabled={submitting || (restaurantRequired && !form.restaurantId)}
+              >
                 {submitting ? "Guardando…" : "Guardar"}
               </Button>
             </DialogFooter>
