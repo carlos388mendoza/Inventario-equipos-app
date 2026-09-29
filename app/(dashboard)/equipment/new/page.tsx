@@ -1,4 +1,4 @@
-import { asc } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { requireRole } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { equipmentTypes, restaurants } from "@/lib/db/schema";
@@ -19,11 +19,16 @@ export default async function NewEquipmentPage() {
 
   const [types, restaurantRows] = await Promise.all([
     db.select().from(equipmentTypes).orderBy(asc(equipmentTypes.name)),
-    db.select().from(restaurants).orderBy(asc(restaurants.name)),
+    // Solo unidades activas: una unidad retirada no admite equipos nuevos.
+    db
+      .select()
+      .from(restaurants)
+      .where(eq(restaurants.active, true))
+      .orderBy(asc(restaurants.name)),
   ]);
 
   return (
-    <main className="p-6">
+    <main className="p-4 sm:p-6">
       <Card className="mx-auto max-w-2xl">
         <CardHeader>
           <CardTitle>Registrar equipo</CardTitle>

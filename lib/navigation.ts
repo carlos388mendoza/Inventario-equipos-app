@@ -1,7 +1,9 @@
 import type { LucideIcon } from "lucide-react";
 import {
+  ArrowLeftRight,
   BarChart3,
   ClipboardList,
+  FileSpreadsheet,
   LayoutDashboard,
   PackageSearch,
   QrCode,
@@ -40,12 +42,28 @@ export const NAV_ITEMS: NavItem[] = [
     roles: [ROLES.ADMIN, ROLES.IT_MANAGER, ROLES.RESTAURANT_USER],
   },
   {
+    // Vista de los documentos de inventario de origen. Es aditiva: convive con
+    // `/equipment` (equipos operativos) y no lo reemplaza.
+    href: "/inventory",
+    label: "Inventario por documento",
+    icon: FileSpreadsheet,
+    roles: [ROLES.ADMIN, ROLES.IT_MANAGER, ROLES.RESTAURANT_USER],
+  },
+  {
+    // Traslado, copia, jalado, préstamo, devolución, sustitución y el libro de
+    // todo eso. Solo para quien gestiona inventario: un usuario de restaurante
+    // puede ver dónde está un equipo, pero no moverlo.
+    href: "/movements",
+    label: "Movimientos",
+    icon: ArrowLeftRight,
+    roles: [ROLES.ADMIN, ROLES.IT_MANAGER],
+  },
+  {
     href: "/requests",
     label: "Solicitudes",
     icon: ClipboardList,
     roles: [ROLES.ADMIN, ROLES.IT_MANAGER, ROLES.RESTAURANT_USER],
-  },
-  {
+  },  {
     href: "/my-requests",
     label: "Mis solicitudes",
     icon: ReceiptText,

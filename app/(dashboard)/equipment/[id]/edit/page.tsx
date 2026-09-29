@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { equipment, equipmentTypes, restaurants } from "@/lib/db/schema";
 import { requireRole } from "@/lib/auth/session";
@@ -25,9 +25,8 @@ export default async function EditEquipmentPage({
   await requireRole(ROLES.ADMIN, ROLES.IT_MANAGER);
   const scope = await resolveScope();
 
-  const [types, restaurantRows, equipmentRows] = await Promise.all([
+  const [types, equipmentRows] = await Promise.all([
     db.select().from(equipmentTypes).orderBy(asc(equipmentTypes.name)),
-    db.select().from(restaurants).orderBy(asc(restaurants.name)),
     db.select().from(equipment).where(eq(equipment.id, id)).limit(1),
   ]);
 
@@ -35,8 +34,17 @@ export default async function EditEquipmentPage({
   const item = equipmentRows[0];
   assertRestaurantAccess(scope, item.restaurantId);
 
+  // Solo unidades activas, más la unidad actual del equipo si estuviera retirada:
+  // así se puede seguir editando sin que su valor desaparezca del selector, pero
+  // no se ofrece como destino nuevo.
+  const restaurantRows = await db
+    .select()
+    .from(restaurants)
+    .where(or(eq(restaurants.active, true), eq(restaurants.id, item.restaurantId)))
+    .orderBy(asc(restaurants.name));
+
   return (
-    <main className="p-6">
+    <main className="p-4 sm:p-6">
       <Card className="mx-auto max-w-2xl">
         <CardHeader>
           <CardTitle>Editar equipo</CardTitle>
