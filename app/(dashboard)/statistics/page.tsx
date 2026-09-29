@@ -92,7 +92,7 @@ export default async function StatisticsPage() {
   const totalEquipment = equiposConTipo.length;
 
   return (
-    <main className="p-6">
+    <main className="p-4 sm:p-6">
       <div className="space-y-4">
         <div>
           <h1 className="text-2xl font-bold">Estadísticas</h1>

@@ -68,7 +68,7 @@ export default async function LabelsPage() {
   );
 
   return (
-    <main className="p-6">
+    <main className="p-4 sm:p-6">
       <LabelsManager
         labels={labels}
         restaurantOptions={restaurantRows.map((r) => ({

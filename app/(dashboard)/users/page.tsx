@@ -40,7 +40,7 @@ export default async function UsersPage() {
   }));
 
   return (
-    <main className="p-6">
+    <main className="p-4 sm:p-6">
       <UserManager users={users} restaurants={restaurantOptions} />
     </main>
   );

@@ -63,7 +63,7 @@ export default async function MyRequestsPage() {
   const restaurant = restaurantRows[0] ?? null;
 
   return (
-    <main className="p-6">
+    <main className="p-4 sm:p-6">
       <MyRequestsManager requests={requests} restaurant={restaurant} />
     </main>
   );

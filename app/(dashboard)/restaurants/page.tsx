@@ -27,7 +27,7 @@ export default async function RestaurantsPage() {
   }));
 
   return (
-    <main className="p-6">
+    <main className="p-4 sm:p-6">
       <RestaurantManager restaurants={list} />
     </main>
   );
