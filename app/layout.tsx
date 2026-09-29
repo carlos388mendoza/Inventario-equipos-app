@@ -4,6 +4,13 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_ORGANIZATION,
+  SITE_TITLE,
+  SITE_URL,
+} from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,23 +23,63 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Origen canónico. Sin esto, Next no puede resolver las URL relativas de
+  // `alternates`, `openGraph.images` o `twitter.images` y avisa en el build.
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Inventario de Equipos — Grupo Comidas",
+    default: SITE_TITLE,
     template: "%s | Grupo Comidas",
   },
-  description:
-    "Sistema de gestión de inventario y solicitudes de equipos para Grupo Comidas.",
-  applicationName: "Inventario Equipos",
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  // La home redirige a /login o /dashboard según haya sesión, así que la URL
+  // canónica de la raíz no debe ser indexable por sí sola: la página pública de
+  // contenido es /inicio. `robots.ts` además excluye las áreas privadas.
+  alternates: {
+    canonical: "/",
+  },
+  keywords: [
+    "inventario de equipos",
+    "gestión de inventario",
+    "solicitudes de equipo",
+    "QR de seguridad",
+    "impresión ZPL",
+    "Zebra",
+    "restaurantes",
+    "Grupo Comidas",
+  ],
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Inventario Equipos",
+    title: SITE_NAME,
   },
   formatDetection: {
     telephone: false,
   },
   icons: {
     apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "es_MX",
+    url: "/",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [
+      {
+        url: "/logo-grupo-comidas.png",
+        width: 1399,
+        height: 501,
+        alt: `${SITE_ORGANIZATION} — ${SITE_NAME}`,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ["/logo-grupo-comidas.png"],
   },
 };
 
