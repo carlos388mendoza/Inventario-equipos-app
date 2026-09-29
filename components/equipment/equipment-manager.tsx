@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { LifecycleBadge } from "@/components/equipment/lifecycle-badge";
 import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
+import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { EQUIPMENT_STATUS_LABELS, ALL_EQUIPMENT_STATUS } from "@/lib/db/enums";
 import { formatDate } from "@/lib/utils";
 import type { EquipmentListItem } from "@/app/(dashboard)/equipment/types";
@@ -46,6 +47,7 @@ export function EquipmentManager({
   const [restaurantId, setRestaurantId] = React.useState("ALL");
   const [typeId, setTypeId] = React.useState("ALL");
   const [status, setStatus] = React.useState("ALL");
+  const { sort, toggle, sortRows } = useTableSort();
 
   const normalized = query.trim().toLowerCase();
   const filtered = equipment.filter((e) => {
@@ -60,6 +62,31 @@ export function EquipmentManager({
     const matchesStatus = status === "ALL" || e.status === status;
     return matchesQuery && matchesRestaurant && matchesType && matchesStatus;
   });
+
+  const sorted = React.useMemo(
+    () =>
+      sortRows(filtered, (e, key) => {
+        switch (key) {
+          case "assetCode":
+            return e.assetCode;
+          case "type":
+            return e.equipmentTypeName;
+          case "model":
+            return [e.brand, e.model].filter(Boolean).join(" ") || null;
+          case "restaurant":
+            return e.restaurantName;
+          case "status":
+            return e.status;
+          case "lifecycle":
+            return e.lifecycle.monthsRemaining;
+          case "installed":
+            return e.installationDate ?? e.purchaseDate;
+          default:
+            return null;
+        }
+      }),
+    [filtered, sortRows]
+  );
 
   return (
     <div className="space-y-4">
@@ -132,13 +159,48 @@ export function EquipmentManager({
             <table className="w-full min-w-[40rem] text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium">Activo</th>
-                  <th className="px-4 py-2 text-left font-medium">Tipo</th>
-                  <th className="px-4 py-2 text-left font-medium">Modelo</th>
-                  <th className="px-4 py-2 text-left font-medium">Restaurante</th>
-                  <th className="px-4 py-2 text-left font-medium">Estado</th>
-                  <th className="px-4 py-2 text-left font-medium">Vida útil</th>
-                  <th className="px-4 py-2 text-left font-medium">Instalación</th>
+                  <SortableHeader
+                    label="Activo"
+                    sortKey="assetCode"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Tipo"
+                    sortKey="type"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Modelo"
+                    sortKey="model"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Restaurante"
+                    sortKey="restaurant"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Estado"
+                    sortKey="status"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Vida útil"
+                    sortKey="lifecycle"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Instalación"
+                    sortKey="installed"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
                   <th className="px-4 py-2 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
@@ -153,7 +215,7 @@ export function EquipmentManager({
                     </td>
                   </tr>
                 )}
-                {filtered.map((e) => (
+                {sorted.map((e) => (
                   <tr key={e.id} className="border-t">
                     <td className="px-4 py-2 font-mono text-xs font-medium">
                       {e.assetCode}

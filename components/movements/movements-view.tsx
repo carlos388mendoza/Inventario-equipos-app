@@ -52,6 +52,7 @@ import type {
 import { BulkMoveDialog } from "./bulk-move-dialog";
 import { RestaurantOptionLabel } from "@/components/restaurants/restaurant-option-label";
 import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
+import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { RowActions } from "./row-actions";
 
 /**
@@ -116,6 +117,12 @@ export function MovementsView({
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const [bulkOpen, setBulkOpen] = React.useState(false);
   const [archiveTarget, setArchiveTarget] = React.useState<MovableEquipmentOption | null>(null);
+  const { sort: eqSort, toggle: toggleEq, sortRows: sortRowsEq } = useTableSort();
+  const {
+    sort: bookSort,
+    toggle: toggleBook,
+    sortRows: sortRowsBook,
+  } = useTableSort();
 
   const matches = React.useCallback(
     (text: string) => text.toLowerCase().includes(query.trim().toLowerCase()),
@@ -149,6 +156,56 @@ export function MovementsView({
   }, [visibleMovements]);
 
   const batchCount = batchSizes.size;
+
+  const sortedEquipment = React.useMemo(
+    () =>
+      sortRowsEq(equipment, (item, key) => {
+        switch (key) {
+          case "code":
+            return item.assetCode;
+          case "type":
+            return item.typeName;
+          case "unit":
+            return item.restaurantName;
+          case "owner":
+            return item.ownerRestaurantName ?? null;
+          case "status":
+            return item.status;
+          default:
+            return null;
+        }
+      }),
+    [equipment, sortRowsEq]
+  );
+
+  const sortedMovements = React.useMemo(
+    () =>
+      sortRowsBook(visibleMovements, (m, key) => {
+        switch (key) {
+          case "date":
+            return m.createdAt;
+          case "op":
+            return m.type;
+          case "equip":
+            return m.assetCode;
+          case "origin":
+            return m.fromName ?? null;
+          case "dest":
+            return m.toName ?? null;
+          case "pair":
+            return m.counterpartAssetCode ?? null;
+          case "reason":
+            return m.reason ?? null;
+          case "batch":
+            return batchSizes.get(m.batchId) ?? 1;
+          case "by":
+            return m.performedByName ?? null;
+          default:
+            return null;
+        }
+      }),
+    [visibleMovements, sortRowsBook, batchSizes]
+  );
 
   // El filtro ofrece las mismas unidades que aparecen en el libro, ni una más.
   // Se enriquece con nombre y logo para la identidad visual; si una unidad ya no
@@ -307,11 +364,36 @@ export function MovementsView({
               <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
                   <th className="w-10 px-4 py-2" />
-                  <th className="px-4 py-2 text-left font-medium">Código</th>
-                  <th className="px-4 py-2 text-left font-medium">Tipo</th>
-                  <th className="px-4 py-2 text-left font-medium">Unidad</th>
-                  <th className="px-4 py-2 text-left font-medium">Propietario</th>
-                  <th className="px-4 py-2 text-left font-medium">Estado</th>
+                  <SortableHeader
+                    label="Código"
+                    sortKey="code"
+                    sort={eqSort}
+                    onToggle={toggleEq}
+                  />
+                  <SortableHeader
+                    label="Tipo"
+                    sortKey="type"
+                    sort={eqSort}
+                    onToggle={toggleEq}
+                  />
+                  <SortableHeader
+                    label="Unidad"
+                    sortKey="unit"
+                    sort={eqSort}
+                    onToggle={toggleEq}
+                  />
+                  <SortableHeader
+                    label="Propietario"
+                    sortKey="owner"
+                    sort={eqSort}
+                    onToggle={toggleEq}
+                  />
+                  <SortableHeader
+                    label="Estado"
+                    sortKey="status"
+                    sort={eqSort}
+                    onToggle={toggleEq}
+                  />
                   <th className="px-4 py-2 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
@@ -326,7 +408,7 @@ export function MovementsView({
                     </td>
                   </tr>
                 )}
-                {equipment.map((item) => (
+                {sortedEquipment.map((item) => (
                   <EquipmentRow
                     key={item.id}
                     item={item}
@@ -361,19 +443,64 @@ export function MovementsView({
               <table className="w-full min-w-[64rem] text-sm">
                 <thead className="bg-muted/50 text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-2 text-left font-medium">Fecha</th>
-                    <th className="px-4 py-2 text-left font-medium">Operación</th>
-                    <th className="px-4 py-2 text-left font-medium">Equipo</th>
-                    <th className="px-4 py-2 text-left font-medium">Origen</th>
-                    <th className="px-4 py-2 text-left font-medium">Destino</th>
-                    <th className="px-4 py-2 text-left font-medium">Par</th>
-                    <th className="px-4 py-2 text-left font-medium">Motivo</th>
-                    <th className="px-4 py-2 text-left font-medium">Lote</th>
-                    <th className="px-4 py-2 text-left font-medium">Hecho por</th>
+                    <SortableHeader
+                      label="Fecha"
+                      sortKey="date"
+                      sort={bookSort}
+                      onToggle={toggleBook}
+                    />
+                    <SortableHeader
+                      label="Operación"
+                      sortKey="op"
+                      sort={bookSort}
+                      onToggle={toggleBook}
+                    />
+                    <SortableHeader
+                      label="Equipo"
+                      sortKey="equip"
+                      sort={bookSort}
+                      onToggle={toggleBook}
+                    />
+                    <SortableHeader
+                      label="Origen"
+                      sortKey="origin"
+                      sort={bookSort}
+                      onToggle={toggleBook}
+                    />
+                    <SortableHeader
+                      label="Destino"
+                      sortKey="dest"
+                      sort={bookSort}
+                      onToggle={toggleBook}
+                    />
+                    <SortableHeader
+                      label="Par"
+                      sortKey="pair"
+                      sort={bookSort}
+                      onToggle={toggleBook}
+                    />
+                    <SortableHeader
+                      label="Motivo"
+                      sortKey="reason"
+                      sort={bookSort}
+                      onToggle={toggleBook}
+                    />
+                    <SortableHeader
+                      label="Lote"
+                      sortKey="batch"
+                      sort={bookSort}
+                      onToggle={toggleBook}
+                    />
+                    <SortableHeader
+                      label="Hecho por"
+                      sortKey="by"
+                      sort={bookSort}
+                      onToggle={toggleBook}
+                    />
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleMovements.map((m) => {
+                  {sortedMovements.map((m) => {
                     const size = batchSizes.get(m.batchId) ?? 1;
                     return (
                       <tr key={m.id} className="border-t">

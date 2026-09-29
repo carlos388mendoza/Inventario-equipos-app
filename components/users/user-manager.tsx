@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { ROLES, ROLE_LABELS } from "@/lib/db/enums";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
 
@@ -65,11 +66,12 @@ export function UserManager({
   users: UserDto[];
   restaurants: RestaurantOption[];
 }) {
-  const [query, setQuery] = React.useState("");
+const [query, setQuery] = React.useState("");
   const [filter, setFilter] = React.useState<string>("all");
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<UserDto | null>(null);
   const [form, setForm] = React.useState<FormState>(EMPTY_FORM);
+  const { sort, toggle, sortRows } = useTableSort();
 
   const [submitting, startSubmit] = useTransition();
   const { refreshAndBroadcast } = useMutationSync();
@@ -153,6 +155,27 @@ const counts = {
     inactive: initial.filter((u) => !u.active).length,
   };
 
+  const sorted = React.useMemo(
+    () =>
+      sortRows(filtered, (u, key) => {
+        switch (key) {
+          case "name":
+            return u.name;
+          case "email":
+            return u.email;
+          case "role":
+            return u.role;
+          case "restaurant":
+            return u.restaurantName ?? null;
+          case "active":
+            return u.active ? 1 : 0;
+          default:
+            return null;
+        }
+      }),
+    [filtered, sortRows]
+  );
+
   // El rol de restaurante queda atado a un restaurante (regla del servidor).
   // La UI lo refleja: sin restaurante no se permite guardar.
   const restaurantRequired = form.role === ROLES.RESTAURANT_USER;
@@ -199,12 +222,37 @@ const counts = {
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full min-w-[40rem] text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 text-left font-medium">Nombre</th>
-                  <th className="px-4 py-2 text-left font-medium">Email</th>
-                  <th className="px-4 py-2 text-left font-medium">Rol</th>
-                  <th className="px-4 py-2 text-left font-medium">Restaurante</th>
-                  <th className="px-4 py-2 text-left font-medium">Estado</th>
+<tr>
+                  <SortableHeader
+                    label="Nombre"
+                    sortKey="name"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Email"
+                    sortKey="email"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Rol"
+                    sortKey="role"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Restaurante"
+                    sortKey="restaurant"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Estado"
+                    sortKey="active"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
                   <th className="px-4 py-2 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
@@ -219,7 +267,7 @@ const counts = {
                     </td>
                   </tr>
                 )}
-                {filtered.map((u) => (
+                {sorted.map((u) => (
                   <tr key={u.id} className="border-t">
                     <td className="px-4 py-2 font-medium">{u.name}</td>
                     <td className="px-4 py-2 text-muted-foreground">

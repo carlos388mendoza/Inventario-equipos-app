@@ -32,7 +32,15 @@ import {
   REQUEST_STATUS_LABELS,
   type RequestStatus,
 } from "@/lib/db/enums";
+import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { formatDateTime } from "@/lib/utils";
+
+const PRIORITY_RANK: Record<string, number> = {
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+  URGENT: 4,
+};
 
 function statusBadgeVariant(status: RequestStatus) {
   switch (status) {
@@ -59,6 +67,7 @@ export function MyRequestsManager({
     null
   );
   const [loading, setLoading] = React.useState(false);
+  const { sort, toggle, sortRows } = useTableSort();
 
   const active = requests.filter((r) =>
     ACTIVE_REQUEST_STATUS.includes(r.status)
@@ -67,6 +76,27 @@ export function MyRequestsManager({
     CLOSED_REQUEST_STATUS.includes(r.status)
   );
   const shown = tab === "active" ? active : closed;
+
+  const sorted = React.useMemo(
+    () =>
+      sortRows(shown, (r, key) => {
+        switch (key) {
+          case "date":
+            return r.createdAt;
+          case "type":
+            return r.equipmentTypeName;
+          case "priority":
+            return PRIORITY_RANK[r.priority] ?? 0;
+          case "status":
+            return r.status;
+          case "reason":
+            return r.reason;
+          default:
+            return null;
+        }
+      }),
+    [shown, sortRows]
+  );
 
   async function openHistory(r: RequestDto) {
     setHistoryFor(r);
@@ -129,11 +159,36 @@ export function MyRequestsManager({
           <table className="w-full min-w-[40rem] text-sm">
             <thead className="bg-muted/50 text-muted-foreground">
               <tr>
-                <th className="px-4 py-2 text-left font-medium">Fecha</th>
-                <th className="px-4 py-2 text-left font-medium">Tipo</th>
-                <th className="px-4 py-2 text-left font-medium">Prioridad</th>
-                <th className="px-4 py-2 text-left font-medium">Estado</th>
-                <th className="px-4 py-2 text-left font-medium">Motivo</th>
+                <SortableHeader
+                  label="Fecha"
+                  sortKey="date"
+                  sort={sort}
+                  onToggle={toggle}
+                />
+                <SortableHeader
+                  label="Tipo"
+                  sortKey="type"
+                  sort={sort}
+                  onToggle={toggle}
+                />
+                <SortableHeader
+                  label="Prioridad"
+                  sortKey="priority"
+                  sort={sort}
+                  onToggle={toggle}
+                />
+                <SortableHeader
+                  label="Estado"
+                  sortKey="status"
+                  sort={sort}
+                  onToggle={toggle}
+                />
+                <SortableHeader
+                  label="Motivo"
+                  sortKey="reason"
+                  sort={sort}
+                  onToggle={toggle}
+                />
                 <th className="px-4 py-2 text-right font-medium">Acciones</th>
               </tr>
             </thead>
@@ -149,7 +204,7 @@ export function MyRequestsManager({
                   </td>
                 </tr>
               )}
-              {shown.map((r) => (
+              {sorted.map((r) => (
                 <tr key={r.id} className="border-t">
                   <td className="px-4 py-2 text-muted-foreground">
                     {formatDateTime(r.createdAt)}

@@ -41,6 +41,7 @@ import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity
 import { LabelPreview } from "@/components/labels/label-preview";
 import { PrintPanel, type LabelPrintData } from "@/components/labels/print-panel";
 import { PrintQueue } from "@/components/labels/print-queue";
+import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
 import { formatDate } from "@/lib/utils";
 
@@ -88,6 +89,7 @@ export function LabelsManager({
     () => new Set()
   );
   const [queueOpen, setQueueOpen] = React.useState(false);
+  const { sort, toggle, sortRows } = useTableSort();
 
   const [submitting, startSubmit] = useTransition();
   const router = useRouter();
@@ -99,6 +101,25 @@ export function LabelsManager({
     [initial, selectedIds]
   );
   const allSelected = initial.length > 0 && selectedIds.size === initial.length;
+
+  const sorted = React.useMemo(
+    () =>
+      sortRows(initial, (l, key) => {
+        switch (key) {
+          case "assetCode":
+            return l.assetCode;
+          case "type":
+            return l.typeName;
+          case "restaurant":
+            return l.restaurantName;
+          case "createdAt":
+            return l.createdAt;
+          default:
+            return null;
+        }
+      }),
+    [initial, sortRows]
+  );
 
   function toggleOne(id: string) {
     setSelectedIds((current) => {
@@ -204,7 +225,7 @@ export function LabelsManager({
             <table className="w-full min-w-[40rem] text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
-                  <th className="w-10 px-4 py-2 text-left font-medium">
+<th className="w-10 px-4 py-2 text-left font-medium">
                     <input
                       type="checkbox"
                       aria-label="Seleccionar todas las etiquetas"
@@ -213,13 +234,31 @@ export function LabelsManager({
                       onChange={toggleAll}
                     />
                   </th>
-                  <th className="px-4 py-2 text-left font-medium">Equipo</th>
-                  <th className="px-4 py-2 text-left font-medium">Tipo</th>
-                  <th className="px-4 py-2 text-left font-medium">
-                    Restaurante
-                  </th>
+                  <SortableHeader
+                    label="Equipo"
+                    sortKey="assetCode"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Tipo"
+                    sortKey="type"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Restaurante"
+                    sortKey="restaurant"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
                   <th className="px-4 py-2 text-left font-medium">QR</th>
-                  <th className="px-4 py-2 text-left font-medium">Generada</th>
+                  <SortableHeader
+                    label="Generada"
+                    sortKey="createdAt"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
                   <th className="px-4 py-2 text-right font-medium">
                     Acciones
                   </th>
@@ -236,7 +275,7 @@ export function LabelsManager({
                     </td>
                   </tr>
                 )}
-                {initial.map((l) => (
+                {sorted.map((l) => (
                   <tr key={l.id} className="border-t">
                     <td className="px-4 py-2">
                       <input

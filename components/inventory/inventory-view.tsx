@@ -23,6 +23,7 @@ import type {
   InventoryAssetRow,
   InventoryGroupRow,
 } from "@/lib/db/queries/inventory";
+import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 
 const ALL = "__all__";
 
@@ -52,6 +53,10 @@ export function InventoryView({
   const [query, setQuery] = React.useState("");
   const [documentFilter, setDocumentFilter] = React.useState<string>(ALL);
   const [restaurantFilter, setRestaurantFilter] = React.useState<string>(ALL);
+  const { sort: assetSort, toggle: toggleAssetSort, sortRows: sortAssets } =
+    useTableSort();
+  const { sort: groupSort, toggle: toggleGroupSort, sortRows: sortGroups } =
+    useTableSort();
 
   const restaurantOptions = React.useMemo(() => {
     const codes = new Set<string>();
@@ -99,6 +104,56 @@ export function InventoryView({
     }
     return { units, byCurrency };
   }, [visibleGroups]);
+
+  const sortedAssets = React.useMemo(
+    () =>
+      sortAssets(visibleAssets, (a, key) => {
+        switch (key) {
+          case "document":
+            return a.sourceDocument ?? null;
+          case "unit":
+            return a.restaurantCode;
+          case "code":
+            return a.assetCode;
+          case "type":
+            return a.typeName;
+          case "model":
+            return a.model ?? null;
+          case "serial":
+            return a.serialNumber ?? null;
+          case "short":
+            return a.sourceShortCode ?? null;
+          case "tech":
+            return a.sourceTechnician ?? null;
+          case "date":
+            return a.sourceDateText ?? null;
+          default:
+            return null;
+        }
+      }),
+    [visibleAssets, sortAssets]
+  );
+
+  const sortedGroups = React.useMemo(
+    () =>
+      sortGroups(visibleGroups, (g, key) => {
+        switch (key) {
+          case "document":
+            return g.sourceDocument ?? null;
+          case "unit":
+            return g.restaurantCode;
+          case "name":
+            return g.name;
+          case "quantity":
+            return g.quantity;
+          case "value":
+            return g.totalValue ?? null;
+          default:
+            return null;
+        }
+      }),
+    [visibleGroups, sortGroups]
+  );
 
   return (
     <div className="space-y-4">
@@ -182,19 +237,64 @@ export function InventoryView({
         <CardContent>
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full min-w-[52rem] text-sm">
-              <thead className="bg-muted/50 text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 text-left font-medium">Documento</th>
-                  <th className="px-4 py-2 text-left font-medium">Unidad</th>
-                  <th className="px-4 py-2 text-left font-medium">Código</th>
-                  <th className="px-4 py-2 text-left font-medium">Tipo</th>
-                  <th className="px-4 py-2 text-left font-medium">Modelo</th>
-                  <th className="px-4 py-2 text-left font-medium">Serie</th>
-                  <th className="px-4 py-2 text-left font-medium">Cód. corto</th>
-                  <th className="px-4 py-2 text-left font-medium">Técnico</th>
-                  <th className="px-4 py-2 text-left font-medium">Fecha</th>
-                </tr>
-              </thead>
+<thead className="bg-muted/50 text-muted-foreground">
+                  <tr>
+                    <SortableHeader
+                      label="Documento"
+                      sortKey="document"
+                      sort={assetSort}
+                      onToggle={toggleAssetSort}
+                    />
+                    <SortableHeader
+                      label="Unidad"
+                      sortKey="unit"
+                      sort={assetSort}
+                      onToggle={toggleAssetSort}
+                    />
+                    <SortableHeader
+                      label="Código"
+                      sortKey="code"
+                      sort={assetSort}
+                      onToggle={toggleAssetSort}
+                    />
+                    <SortableHeader
+                      label="Tipo"
+                      sortKey="type"
+                      sort={assetSort}
+                      onToggle={toggleAssetSort}
+                    />
+                    <SortableHeader
+                      label="Modelo"
+                      sortKey="model"
+                      sort={assetSort}
+                      onToggle={toggleAssetSort}
+                    />
+                    <SortableHeader
+                      label="Serie"
+                      sortKey="serial"
+                      sort={assetSort}
+                      onToggle={toggleAssetSort}
+                    />
+                    <SortableHeader
+                      label="Cód. corto"
+                      sortKey="short"
+                      sort={assetSort}
+                      onToggle={toggleAssetSort}
+                    />
+                    <SortableHeader
+                      label="Técnico"
+                      sortKey="tech"
+                      sort={assetSort}
+                      onToggle={toggleAssetSort}
+                    />
+                    <SortableHeader
+                      label="Fecha"
+                      sortKey="date"
+                      sort={assetSort}
+                      onToggle={toggleAssetSort}
+                    />
+                  </tr>
+                </thead>
               <tbody>
                 {visibleAssets.length === 0 && (
                   <tr>
@@ -206,7 +306,7 @@ export function InventoryView({
                     </td>
                   </tr>
                 )}
-                {visibleAssets.map((a) => (
+                {sortedAssets.map((a) => (
                   <tr key={a.id} className="border-t">
                     <td className="px-4 py-2 text-xs text-muted-foreground">
                       {a.sourceDocument ?? (
@@ -260,13 +360,38 @@ export function InventoryView({
             <table className="w-full min-w-[40rem] text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium">Documento</th>
-                  <th className="px-4 py-2 text-left font-medium">Unidad</th>
-                  <th className="px-4 py-2 text-left font-medium">Rubro</th>
-                  <th className="px-4 py-2 text-right font-medium">Cantidad</th>
-                  <th className="px-4 py-2 text-right font-medium">
-                    Valor total de la línea
-                  </th>
+                  <SortableHeader
+                    label="Documento"
+                    sortKey="document"
+                    sort={groupSort}
+                    onToggle={toggleGroupSort}
+                  />
+                  <SortableHeader
+                    label="Unidad"
+                    sortKey="unit"
+                    sort={groupSort}
+                    onToggle={toggleGroupSort}
+                  />
+                  <SortableHeader
+                    label="Rubro"
+                    sortKey="name"
+                    sort={groupSort}
+                    onToggle={toggleGroupSort}
+                  />
+                  <SortableHeader
+                    label="Cantidad"
+                    sortKey="quantity"
+                    sort={groupSort}
+                    onToggle={toggleGroupSort}
+                    align="right"
+                  />
+                  <SortableHeader
+                    label="Valor total de la línea"
+                    sortKey="value"
+                    sort={groupSort}
+                    onToggle={toggleGroupSort}
+                    align="right"
+                  />
                 </tr>
               </thead>
               <tbody>
@@ -280,7 +405,7 @@ export function InventoryView({
                     </td>
                   </tr>
                 )}
-                {visibleGroups.map((g) => (
+                {sortedGroups.map((g) => (
                   <tr key={g.id} className="border-t">
                     <td className="px-4 py-2 text-xs text-muted-foreground">
                       {g.sourceDocument ?? "—"}

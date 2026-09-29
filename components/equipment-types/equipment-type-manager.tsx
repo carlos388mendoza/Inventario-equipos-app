@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
+import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { formatDate } from "@/lib/utils";
 
 const EMPTY_FORM = { name: "", description: "", usefulLifeMonths: 36 };
@@ -50,6 +51,7 @@ export function EquipmentTypeManager({
 
   const [submitting, startSubmit] = useTransition();
   const { refreshAndBroadcast } = useMutationSync();
+  const { sort, toggle, sortRows } = useTableSort();
 
   function openCreate() {
     setEditing(null);
@@ -117,8 +119,29 @@ export function EquipmentTypeManager({
       filter === "all" ||
       (filter === "active" && t.active) ||
       (filter === "inactive" && !t.active);
-    return matchesQuery && matchesFilter;
+return matchesQuery && matchesFilter;
   });
+
+  const sorted = React.useMemo(
+    () =>
+      sortRows(filtered, (t, key) => {
+        switch (key) {
+          case "name":
+            return t.name;
+          case "description":
+            return t.description ?? null;
+          case "life":
+            return t.usefulLifeMonths;
+          case "active":
+            return t.active ? 1 : 0;
+          case "createdAt":
+            return t.createdAt;
+          default:
+            return null;
+        }
+      }),
+    [filtered, sortRows]
+  );
 
   const counts = {
     total: initial.length,
@@ -168,12 +191,37 @@ export function EquipmentTypeManager({
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full min-w-[40rem] text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 text-left font-medium">Nombre</th>
-                  <th className="px-4 py-2 text-left font-medium">Descripción</th>
-                  <th className="px-4 py-2 text-left font-medium">Vida útil</th>
-                  <th className="px-4 py-2 text-left font-medium">Estado</th>
-                  <th className="px-4 py-2 text-left font-medium">Creado</th>
+<tr>
+                  <SortableHeader
+                    label="Nombre"
+                    sortKey="name"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Descripción"
+                    sortKey="description"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Vida útil"
+                    sortKey="life"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Estado"
+                    sortKey="active"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Creado"
+                    sortKey="createdAt"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
                   <th className="px-4 py-2 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
@@ -188,7 +236,7 @@ export function EquipmentTypeManager({
                     </td>
                   </tr>
                 )}
-                {filtered.map((t) => (
+                {sorted.map((t) => (
                   <tr key={t.id} className="border-t">
                     <td className="px-4 py-2 font-medium">{t.name}</td>
                     <td className="px-4 py-2 text-muted-foreground">

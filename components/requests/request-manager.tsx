@@ -46,7 +46,15 @@ import {
   type RequestStatus,
 } from "@/lib/db/enums";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
+import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { formatDateTime } from "@/lib/utils";
+
+const PRIORITY_RANK: Record<string, number> = {
+  LOW: 1,
+  MEDIUM: 2,
+  HIGH: 3,
+  URGENT: 4,
+};
 
 function statusBadgeVariant(status: RequestStatus) {
   switch (status) {
@@ -85,8 +93,9 @@ export function RequestManager({
   const [newStatus, setNewStatus] = React.useState<RequestStatus | "">("");
   const [comment, setComment] = React.useState("");
 
-  const [submitting, startSubmit] = useTransition();
+const [submitting, startSubmit] = useTransition();
   const { refreshAndBroadcast } = useMutationSync();
+  const { sort, toggle, sortRows } = useTableSort();
 
   const isGlobalFilter = restaurantOptions.length > 1;
 
@@ -102,8 +111,31 @@ export function RequestManager({
       [r.equipmentTypeName, r.restaurantName, r.requestedByName, r.reason]
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(normalized));
-    return matchesTab && matchesRestaurant && matchesQuery;
+return matchesTab && matchesRestaurant && matchesQuery;
   });
+
+  const sorted = React.useMemo(
+    () =>
+      sortRows(filtered, (r, key) => {
+        switch (key) {
+          case "date":
+            return r.createdAt;
+          case "type":
+            return r.equipmentTypeName;
+          case "restaurant":
+            return r.restaurantName;
+          case "priority":
+            return PRIORITY_RANK[r.priority] ?? 0;
+          case "status":
+            return r.status;
+          case "requester":
+            return r.requestedByName;
+          default:
+            return null;
+        }
+      }),
+    [filtered, sortRows]
+  );
 
   function openStatusChange(r: RequestDto) {
     setStatusTarget(r);
@@ -195,13 +227,43 @@ export function RequestManager({
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full min-w-[40rem] text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 text-left font-medium">Fecha</th>
-                  <th className="px-4 py-2 text-left font-medium">Tipo</th>
-                  <th className="px-4 py-2 text-left font-medium">Restaurante</th>
-                  <th className="px-4 py-2 text-left font-medium">Prioridad</th>
-                  <th className="px-4 py-2 text-left font-medium">Estado</th>
-                  <th className="px-4 py-2 text-left font-medium">Solicitante</th>
+<tr>
+                  <SortableHeader
+                    label="Fecha"
+                    sortKey="date"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Tipo"
+                    sortKey="type"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Restaurante"
+                    sortKey="restaurant"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Prioridad"
+                    sortKey="priority"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Estado"
+                    sortKey="status"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Solicitante"
+                    sortKey="requester"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
                   <th className="px-4 py-2 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
@@ -216,7 +278,7 @@ export function RequestManager({
                     </td>
                   </tr>
                 )}
-                {filtered.map((r) => (
+                {sorted.map((r) => (
                   <tr key={r.id} className="border-t">
                     <td className="px-4 py-2 text-muted-foreground">
                       {formatDateTime(r.createdAt)}

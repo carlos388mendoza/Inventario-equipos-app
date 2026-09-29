@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
 import { formatDate } from "@/lib/utils";
 
@@ -47,10 +48,11 @@ export function RestaurantManager({
   );
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<RestaurantDto | null>(null);
-  const [form, setForm] = React.useState(EMPTY_FORM);
+const [form, setForm] = React.useState(EMPTY_FORM);
 
   const [submitting, startSubmit] = useTransition();
   const { refreshAndBroadcast } = useMutationSync();
+  const { sort, toggle, sortRows } = useTableSort();
 
   function openCreate() {
     setEditing(null);
@@ -110,8 +112,29 @@ export function RestaurantManager({
       filter === "all" ||
       (filter === "active" && r.active) ||
       (filter === "inactive" && !r.active);
-    return matchesQuery && matchesFilter;
+return matchesQuery && matchesFilter;
   });
+
+  const sorted = React.useMemo(
+    () =>
+      sortRows(filtered, (r, key) => {
+        switch (key) {
+          case "name":
+            return r.name;
+          case "code":
+            return r.code;
+          case "address":
+            return r.address ?? null;
+          case "active":
+            return r.active ? 1 : 0;
+          case "createdAt":
+            return r.createdAt;
+          default:
+            return null;
+        }
+      }),
+    [filtered, sortRows]
+  );
 
   const counts = {
     total: initial.length,
@@ -157,12 +180,37 @@ export function RestaurantManager({
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full min-w-[40rem] text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-2 text-left font-medium">Nombre</th>
-                  <th className="px-4 py-2 text-left font-medium">Código</th>
-                  <th className="px-4 py-2 text-left font-medium">Dirección</th>
-                  <th className="px-4 py-2 text-left font-medium">Estado</th>
-                  <th className="px-4 py-2 text-left font-medium">Creado</th>
+<tr>
+                  <SortableHeader
+                    label="Nombre"
+                    sortKey="name"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Código"
+                    sortKey="code"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Dirección"
+                    sortKey="address"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Estado"
+                    sortKey="active"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
+                  <SortableHeader
+                    label="Creado"
+                    sortKey="createdAt"
+                    sort={sort}
+                    onToggle={toggle}
+                  />
                   <th className="px-4 py-2 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
@@ -174,7 +222,7 @@ export function RestaurantManager({
                     </td>
                   </tr>
                 )}
-                {filtered.map((r) => (
+                {sorted.map((r) => (
                   <tr key={r.id} className="border-t">
                     <td className="px-4 py-2">
                       <RestaurantIdentity restaurant={r} size="sm" showSector />
