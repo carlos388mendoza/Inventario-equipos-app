@@ -41,7 +41,9 @@ export default async function TechniciansPage() {
         technicians={technicians}
         restaurants={restaurantOptions}
         currentUserId={user.id}
-        canEditSelf={user.role === ROLES.ADMIN}
+        canEditSelf={
+          user.role === ROLES.ADMIN || user.role === ROLES.HEAD_TECHNICIAN
+        }
       />
     </main>
   );

@@ -9,7 +9,7 @@ import {
   securityLabels,
 } from "@/lib/db/schema";
 import { EQUIPMENT_STATUS_LABELS } from "@/lib/db/enums";
-import { getEquipmentRequesterTechnician } from "@/lib/db/queries/requests";
+import { getEquipmentRequester } from "@/lib/db/queries/requests";
 import { Badge } from "@/components/ui/badge";
 import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import {
@@ -23,9 +23,11 @@ import { formatDate } from "@/lib/utils";
 
 /**
  * Página pública de una etiqueta de seguridad (QR).
- * ÚNICA ruta sin autenticación. Muestra únicamente: tipo, marca/modelo,
- * restaurante, fecha de instalación y estado. Nunca serial, notas ni
- * datos de usuarios. Busca por token opaco, jamás por id.
+ * ÚNICA ruta sin autenticación; se accede con un token opaco, jamás por id.
+ * Muestra: tipo, marca/modelo, restaurante, fecha de instalación, estado y el
+ * NOMBRE de quien solicitó el reemplazo del equipo (issue #12). Del solicitante
+ * se expone SOLO su nombre; nunca su correo, su rol ni el resto de la solicitud.
+ * No se publican serial, notas ni otros datos de usuarios.
  */
 export const metadata: Metadata = {
   title: "Equipo",
@@ -67,9 +69,10 @@ export default async function PublicEquipmentPage({
   if (rows.length === 0) notFound();
   const row = rows[0];
 
-  // Issue #12: solo si existe una solicitud de REEMPLAZO enlazada a este equipo
-  // y fue creada por un técnico, se muestra su nombre (nunca su correo).
-  const technician = await getEquipmentRequesterTechnician(row.id);
+  // Issue #12: se muestra quién solicitó el reemplazo de este equipo (el
+  // solicitante de la última solicitud de reemplazo enlazada). Nunca se expone
+  // su correo, solo su nombre.
+  const requester = await getEquipmentRequester(row.id);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
@@ -112,12 +115,10 @@ export default async function PublicEquipmentPage({
               <dt className="text-muted-foreground">Fecha de instalación</dt>
               <dd>{formatDate(row.installationDate)}</dd>
             </div>
-            {technician && (
+            {requester && (
               <div>
-                <dt className="text-muted-foreground">
-                  Técnico responsable del reemplazo
-                </dt>
-                <dd>{technician.name}</dd>
+                <dt className="text-muted-foreground">Solicitado por</dt>
+                <dd>{requester.name}</dd>
               </div>
             )}
           </dl>

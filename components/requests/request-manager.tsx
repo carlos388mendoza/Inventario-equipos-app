@@ -41,9 +41,9 @@ import {
   ACTIVE_REQUEST_STATUS,
   CLOSED_REQUEST_STATUS,
   ALL_REQUEST_STATUS,
-  DESTINATION_AREA_LABELS,
   REQUEST_PRIORITY_LABELS,
   REQUEST_STATUS_LABELS,
+  formatDestinationArea,
   type RequestStatus,
 } from "@/lib/db/enums";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
@@ -228,7 +228,7 @@ return matchesTab && matchesRestaurant && matchesQuery;
             )}
           </div>
 
-          <div className="overflow-x-auto rounded-md border">
+          <div className="hidden overflow-x-auto rounded-md border md:block">
             <table className="w-full min-w-[40rem] text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
 <tr>
@@ -320,9 +320,7 @@ return matchesTab && matchesRestaurant && matchesQuery;
                       {r.requestedByName}
                     </td>
                     <td className="px-4 py-2 text-muted-foreground">
-                      {r.destinationArea
-                        ? DESTINATION_AREA_LABELS[r.destinationArea]
-                        : "Sin especificar"}
+                      {formatDestinationArea(r.destinationArea)}
                     </td>
                     <td className="px-4 py-2 text-right">
                       {isManager && (
@@ -340,6 +338,73 @@ return matchesTab && matchesRestaurant && matchesQuery;
               </tbody>
             </table>
           </div>
+
+          <ul className="space-y-3 md:hidden">
+            {sorted.length === 0 && (
+              <li className="rounded-md border px-4 py-8 text-center text-sm text-muted-foreground">
+                No hay solicitudes que coincidan.
+              </li>
+            )}
+            {sorted.map((r) => (
+              <li key={r.id} className="rounded-md border p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium">{r.equipmentTypeName}</p>
+                    {r.currentEquipmentAssetCode && (
+                      <p className="text-xs text-muted-foreground">
+                        Reemplazo de {r.currentEquipmentAssetCode}
+                      </p>
+                    )}
+                  </div>
+                  <Badge variant={statusBadgeVariant(r.status)}>
+                    {REQUEST_STATUS_LABELS[r.status] ?? r.status}
+                  </Badge>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                  <span>{formatDateTime(r.createdAt)}</span>
+                  <span>
+                    {REQUEST_PRIORITY_LABELS[r.priority] ?? r.priority}
+                  </span>
+                </div>
+                <div className="mt-2">
+                  <RestaurantIdentity
+                    restaurant={{
+                      name: r.restaurantName,
+                      brand: r.restaurantBrand,
+                      sector: r.restaurantSector,
+                      logo: r.restaurantLogo,
+                    }}
+                    size="sm"
+                    showSector={false}
+                  />
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                  <div>
+                    <dt>Solicitante</dt>
+                    <dd className="truncate text-foreground">
+                      {r.requestedByName}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Área</dt>
+                    <dd className="truncate text-foreground">
+                      {formatDestinationArea(r.destinationArea)}
+                    </dd>
+                  </div>
+                </dl>
+                {isManager && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 w-full"
+                    onClick={() => openStatusChange(r)}
+                  >
+                    Cambiar estado
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
         </CardContent>
       </Card>
 

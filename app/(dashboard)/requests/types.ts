@@ -1,5 +1,4 @@
 import type {
-  DestinationArea,
   RequestInstallationStatus,
   RequestPriority,
   RequestStatus,
@@ -18,7 +17,7 @@ export interface RequestDto {
   equipmentTypeName: string;
   currentEquipmentId: string | null;
   currentEquipmentAssetCode: string | null;
-  destinationArea: DestinationArea | null;
+  destinationArea: string | null;
   reason: string;
   description: string | null;
   priority: RequestPriority;

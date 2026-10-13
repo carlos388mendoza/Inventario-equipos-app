@@ -46,6 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import {
   ROLES,
@@ -227,15 +228,6 @@ export function UserManager({
   // La UI lo refleja: sin restaurante no se permite guardar.
   const restaurantRequired = form.role === ROLES.RESTAURANT_USER;
   const technicianRole = isTechnicianRole(asUserRole(form.role));
-
-  function toggleAssignment(restaurantId: string) {
-    setForm((f) => ({
-      ...f,
-      restaurantIds: f.restaurantIds.includes(restaurantId)
-        ? f.restaurantIds.filter((id) => id !== restaurantId)
-        : [...f.restaurantIds, restaurantId],
-    }));
-  }
 
   const confirmTitle = confirm
     ? confirm.type === "delete"
@@ -493,27 +485,19 @@ export function UserManager({
                   <p className="text-xs text-muted-foreground">
                     Marca los restaurantes que este técnico puede atender.
                   </p>
-                  <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2">
-                    {restaurants.length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        No hay restaurantes activos.
-                      </p>
-                    )}
-                    {restaurants.map((r) => (
-                      <label
-                        key={r.id}
-                        className="flex items-center gap-2 text-sm"
-                      >
-                        <input
-                          type="checkbox"
-                          className="h-4 w-4"
-                          checked={form.restaurantIds.includes(r.id)}
-                          onChange={() => toggleAssignment(r.id)}
-                        />
-                        {r.name}
-                      </label>
-                    ))}
-                  </div>
+                  <MultiSelect
+                    options={restaurants.map((r) => ({
+                      value: r.id,
+                      label: `${r.name} (${r.code})`,
+                    }))}
+                    selected={form.restaurantIds}
+                    onChange={(restaurantIds) =>
+                      setForm((f) => ({ ...f, restaurantIds }))
+                    }
+                    placeholder="Selecciona restaurantes"
+                    searchPlaceholder="Buscar restaurante…"
+                    emptyLabel="No hay restaurantes activos."
+                  />
                 </>
               ) : (
                 <>

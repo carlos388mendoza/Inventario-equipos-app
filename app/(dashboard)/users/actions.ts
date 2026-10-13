@@ -15,6 +15,7 @@ import {
   updateUserSchema,
 } from "@/lib/validation/users";
 import {
+  assertAssignableRestaurants,
   getUserAccount,
   listActiveAdminIds,
   setUserRestaurantAssignments,
@@ -49,6 +50,12 @@ export async function createUserAction(
   try {
     const parsed = createUserSchema.parse(input);
     const technician = isTechnicianRole(parsed.role);
+
+    // R1: se validan las asignaciones ANTES de crear al usuario para que un ID
+    // inválido no deje un usuario creado sin asignaciones (nunca estado parcial).
+    if (technician) {
+      await assertAssignableRestaurants(parsed.restaurantIds ?? []);
+    }
 
     const userId = await createUser({
       name: parsed.name,
@@ -108,6 +115,12 @@ export async function updateUserAction(
       }
     }
 
+    // R1: se validan las asignaciones ANTES de actualizar para que un ID
+    // inválido no deje el usuario actualizado con asignaciones incoherentes.
+    await assertAssignableRestaurants(
+      technician ? parsed.restaurantIds ?? [] : []
+    );
+
     await db
       .update(userTable)
       .set({
@@ -137,16 +150,15 @@ export async function updateUserAction(
 
 /**
  * Actualiza solo las asignaciones de un técnico. La usan el jefe de técnicos y
- * el administrador desde su pantalla (issue #16); por eso autoriza a ambos.
+ * el administrador desde su pantalla (issues #16 y #18); por eso autoriza a
+ * ambos. Desde el issue #18 un jefe de técnicos también puede reasignarse a sí
+ * mismo, igual que un administrador.
  */
 export async function setTechnicianAssignmentsAction(input: {
   userId: string;
   restaurantIds: string[];
 }): Promise<UserActionResult> {
-  const current = await requireRole(
-    ROLES.ADMIN,
-    ROLES.HEAD_TECHNICIAN
-  );
+  await requireRole(ROLES.ADMIN, ROLES.HEAD_TECHNICIAN);
   try {
     const [target] = await db
       .select({ role: userTable.role })
@@ -155,16 +167,6 @@ export async function setTechnicianAssignmentsAction(input: {
     if (!target) return { ok: false, error: "Usuario no encontrado." };
     if (!isTechnicianRole(asUserRole(target.role))) {
       return { ok: false, error: "El usuario no es un técnico." };
-    }
-    // Un jefe de técnicos no puede reasignarse a sí mismo fuera del sistema.
-    if (
-      asUserRole(current.role) === ROLES.HEAD_TECHNICIAN &&
-      input.userId === current.id
-    ) {
-      return {
-        ok: false,
-        error: "No puedes cambiar tus propias asignaciones.",
-      };
     }
 
     await setUserRestaurantAssignments(input.userId, input.restaurantIds);

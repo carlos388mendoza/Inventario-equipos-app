@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth/session";
 import { asUserRole } from "@/lib/db/enums";
+import { CommandPalette } from "@/components/dashboard/command-palette";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { TabSyncProvider } from "@/components/sync/tab-sync-provider";
 
@@ -19,6 +20,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const user = await requireUser();
+  const role = asUserRole(user.role);
   return (
     // `lg:flex-row` mantiene el sidebar fijo de escritorio; por debajo de `lg`
     // la columna superior la ocupa la barra con el botón de menú. `min-w-0` en
@@ -26,10 +28,12 @@ export default async function DashboardLayout({
     // en móvil en vez de desplazarse dentro de su contenedor.
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
       <DashboardSidebar
-        role={asUserRole(user.role)}
+        role={role}
         name={user.name}
         email={user.email}
       />
+      {/* Paleta de comandos (#19): Cmd/Ctrl+K desde cualquier página. */}
+      <CommandPalette role={role} />
       <div className="mx-auto w-full min-w-0 max-w-7xl flex-1">
         <TabSyncProvider />
         {children}

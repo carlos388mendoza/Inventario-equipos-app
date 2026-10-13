@@ -28,9 +28,9 @@ import { Badge } from "@/components/ui/badge";
 import {
   ACTIVE_REQUEST_STATUS,
   CLOSED_REQUEST_STATUS,
-  DESTINATION_AREA_LABELS,
   REQUEST_PRIORITY_LABELS,
   REQUEST_STATUS_LABELS,
+  formatDestinationArea,
   type RequestStatus,
 } from "@/lib/db/enums";
 import { SortableHeader, useTableSort } from "@/components/ui/sortable";
@@ -228,9 +228,7 @@ export function MyRequestsManager({
                     </Badge>
                   </td>
                   <td className="px-4 py-2 text-muted-foreground">
-                    {r.destinationArea
-                      ? DESTINATION_AREA_LABELS[r.destinationArea]
-                      : "Sin especificar"}
+                    {formatDestinationArea(r.destinationArea)}
                   </td>
                   <td className="max-w-[260px] truncate px-4 py-2 text-muted-foreground">
                     {r.reason}

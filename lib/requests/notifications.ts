@@ -12,13 +12,12 @@ import {
   userTable,
 } from "@/lib/db/schema";
 import {
-  DESTINATION_AREA_LABELS,
   INSTALLATION_FOLLOW_UP_DAYS,
   ONE_SHOT_NOTIFICATION_TYPES,
   REQUEST_NOTIFICATION_STATUS,
   REQUEST_NOTIFICATION_TYPE,
   ROLES,
-  type DestinationArea,
+  formatDestinationArea,
   type RequestNotificationType,
 } from "@/lib/db/enums";
 import {
@@ -35,7 +34,7 @@ export interface RequestContext {
   requestedById: string;
   requestedByName: string;
   reason: string;
-  destinationArea: DestinationArea | null;
+  destinationArea: string | null;
   currentEquipmentAssetCode: string | null;
 }
 
@@ -198,8 +197,8 @@ export async function recordNotifications(input: {
   return outcomes;
 }
 
-function areaLabel(area: DestinationArea | null): string {
-  return area ? DESTINATION_AREA_LABELS[area] : "Sin especificar";
+function areaLabel(area: string | null): string {
+  return formatDestinationArea(area);
 }
 
 function equipmentLine(ctx: RequestContext): string {

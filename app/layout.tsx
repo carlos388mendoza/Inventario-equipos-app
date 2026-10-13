@@ -57,6 +57,12 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
+    // Enlace explícito para navegadores y rastreadores (Google). Sin esta
+    // entrada, el `metadata.icons` sobrescribe el archivo-convención
+    // `app/icon.png` y no se emite ningún `<link rel="icon">`. Se usa el PNG
+    // ya desplegado en `/icon.png` (256×256). El `.ico` de `/favicon.ico` se
+    // añade por la convención `app/favicon.ico`.
+    icon: [{ url: "/icon.png", type: "image/png", sizes: "256x256" }],
     apple: "/apple-touch-icon.png",
   },
   openGraph: {

@@ -15,7 +15,6 @@ import {
   REQUEST_NOTIFICATION_STATUS,
   REQUEST_PRIORITY,
   REQUEST_STATUS,
-  type DestinationArea,
   type EquipmentMovementType,
   type EquipmentStatus,
   type InventoryFormat,
@@ -221,10 +220,10 @@ export const equipmentRequests = sqliteTable(
     /**
      * Área física donde se instalará el equipo dentro del restaurante
      * (cocina, counter, etc.). Es distinto de `restaurantId` (unidad de
-     * destino) y de la ubicación actual del equipo. Nullable para conservar las
-     * solicitudes creadas antes de este campo (issue #14).
+     * destino) y de la ubicación actual del equipo. Texto libre desde el issue
+     * #20; nullable para conservar las solicitudes creadas antes de este campo.
      */
-    destinationArea: text("destination_area").$type<DestinationArea>(),
+    destinationArea: text("destination_area"),
     priority: text("priority")
       .$type<RequestPriority>()
       .notNull()

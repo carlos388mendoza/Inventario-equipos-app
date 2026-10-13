@@ -8,7 +8,7 @@ import {
   requestConfirmationTokens,
   restaurants,
 } from "@/lib/db/schema";
-import { DESTINATION_AREA_LABELS } from "@/lib/db/enums";
+import { formatDestinationArea } from "@/lib/db/enums";
 import {
   Card,
   CardContent,
@@ -100,7 +100,7 @@ export default async function ConfirmInstallationPage({
                 <p className="text-lg font-semibold">{row.equipmentTypeName}</p>
                 {row.destinationArea && (
                   <p className="text-sm text-muted-foreground">
-                    Área de destino: {DESTINATION_AREA_LABELS[row.destinationArea]}
+                    Área de destino: {formatDestinationArea(row.destinationArea)}
                   </p>
                 )}
               </div>

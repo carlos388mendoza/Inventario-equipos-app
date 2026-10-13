@@ -19,7 +19,6 @@ import {
   REQUEST_STATUS,
   ROLES,
   isTechnicianRole,
-  type DestinationArea,
 } from "@/lib/db/enums";
 import {
   requestInputSchema,
@@ -104,7 +103,7 @@ export async function createRequest(
     const currentEquipmentId =
       parsed.kind === "replacement" ? parsed.currentEquipmentId || null : null;
 
-    let inheritedArea: DestinationArea | null = null;
+    let inheritedArea: string | null = null;
     if (currentEquipmentId) {
       const [row] = await db
         .select({ id: equipment.id, restaurantId: equipment.restaurantId })

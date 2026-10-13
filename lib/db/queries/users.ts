@@ -1,4 +1,4 @@
-﻿import { and, asc, eq, isNull } from "drizzle-orm";
+﻿import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   restaurants,
@@ -73,6 +73,12 @@ export async function setUserRestaurantAssignments(
   userId: string,
   restaurantIds: string[]
 ): Promise<void> {
+  // Validación de servidor (issues #17/#18): no se confía en los filtros de la
+  // interfaz, que solo ofrece restaurantes activos. Se comprueba ANTES de
+  // borrar/reinsertar para no dejar las asignaciones a medias ante un ID
+  // inexistente o inactivo enviado por el cliente.
+  await assertAssignableRestaurants(restaurantIds);
+
   await db
     .delete(userRestaurantAssignments)
     .where(eq(userRestaurantAssignments.userId, userId));
@@ -88,6 +94,47 @@ export async function setUserRestaurantAssignments(
       createdAt: new Date(),
     }))
   );
+}
+
+/**
+ * Subconjunto de `restaurantIds` que existen y están activos.
+ *
+ * Se consulta en el servidor para validar las asignaciones de técnicos
+ * (issues #17/#18) sin depender de lo que envíe el cliente.
+ */
+export async function filterActiveRestaurantIds(
+  restaurantIds: string[]
+): Promise<string[]> {
+  const unique = [...new Set(restaurantIds.filter(Boolean))];
+  if (unique.length === 0) return [];
+
+  const rows = await db
+    .select({ id: restaurants.id })
+    .from(restaurants)
+    .where(
+      and(eq(restaurants.active, true), inArray(restaurants.id, unique))
+    );
+
+  return rows.map((row) => row.id);
+}
+
+/**
+ * Lanza si algún restaurante recibido no existe o está inactivo.
+ *
+ * Se usa tanto en `setUserRestaurantAssignments` como en las acciones de alta y
+ * edición para rechazar la operación completa (nunca parcialmente) cuando el
+ * cliente manda un ID fuera del catálogo activo.
+ */
+export async function assertAssignableRestaurants(
+  restaurantIds: string[]
+): Promise<void> {
+  const unique = [...new Set(restaurantIds.filter(Boolean))];
+  if (unique.length === 0) return;
+
+  const valid = await filterActiveRestaurantIds(unique);
+  if (valid.length !== unique.length) {
+    throw new Error("Uno o más restaurantes no existen o están inactivos.");
+  }
 }
 
 /** Email en uso por OTRO usuario con el mismo id (null si nadie). */

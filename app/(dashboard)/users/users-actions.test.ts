@@ -167,6 +167,10 @@ describe("createUserAction: reglas de negocio", () => {
 
   it("crear un técnico guarda sus asignaciones y le quita restaurantId", async () => {
     como(ROLES.ADMIN);
+    // R1: validación previa al alta (para no crear el usuario) y validación
+    // dentro de setUserRestaurantAssignments antes de borrar/reinsertar.
+    mocks.state.selectQueue.push([{ id: "r-a" }, { id: "r-b" }]);
+    mocks.state.selectQueue.push([{ id: "r-a" }, { id: "r-b" }]);
     const resultado = await createUserAction(TECNICO_JOHANA);
     expect(resultado.ok).toBe(true);
     expect(mocks.createUser).toHaveBeenCalledWith({
@@ -182,12 +186,31 @@ describe("createUserAction: reglas de negocio", () => {
       expect.arrayContaining([expect.objectContaining({ userId: "user-nuevo" })]),
     );
   });
+
+  it("crear un técnico con un restaurante inválido NO crea al usuario (R1)", async () => {
+    como(ROLES.ADMIN);
+    // El catálogo activo no contiene el restaurante pedido.
+    mocks.state.selectQueue.push([]);
+    const resultado = await createUserAction({
+      ...TECNICO_JOHANA,
+      restaurantIds: ["r-inexistente"],
+    });
+    expect(resultado.ok).toBe(false);
+    expect(resultado).toMatchObject({
+      error: expect.stringMatching(/no existen o están inactivos/i),
+    });
+    // La validación corre antes del alta: el usuario no se crea.
+    expect(mocks.createUser).not.toHaveBeenCalled();
+    expect(mocks.state.inserts).toHaveLength(0);
+    expect(mocks.state.deleteCalled).toBe(0);
+  });
 });
 
 describe("setTechnicianAssignmentsAction: puerta y reglas (#16)", () => {
   it("pide exactamente ADMIN o HEAD_TECHNICIAN", async () => {
     como(ROLES.ADMIN);
     mocks.state.selectQueue.push([{ role: ROLES.TECHNICIAN }]);
+    mocks.state.selectQueue.push([{ id: "r-a" }]);
     await setTechnicianAssignmentsAction({ userId: "u-2", restaurantIds: ["r-a"] });
     const args = mocks.requireRole.mock.calls.at(-1) as string[];
     expect(args).toEqual([ROLES.ADMIN, ROLES.HEAD_TECHNICIAN]);
@@ -204,6 +227,7 @@ describe("setTechnicianAssignmentsAction: puerta y reglas (#16)", () => {
   it("ADMIN reasigna a un técnico", async () => {
     como(ROLES.ADMIN);
     mocks.state.selectQueue.push([{ role: ROLES.TECHNICIAN }]);
+    mocks.state.selectQueue.push([{ id: "r-a" }]);
     const resultado = await setTechnicianAssignmentsAction({
       userId: "u-2",
       restaurantIds: ["r-a", "r-a", ""],
@@ -214,6 +238,37 @@ describe("setTechnicianAssignmentsAction: puerta y reglas (#16)", () => {
     expect(mocks.state.inserts.at(-1)).toEqual(
       expect.arrayContaining([expect.objectContaining({ userId: "u-2" })]),
     );
+  });
+
+  it("rechaza restaurantes inexistentes o inactivos sin borrar ni insertar (#17/#18)", async () => {
+    como(ROLES.ADMIN);
+    mocks.state.selectQueue.push([{ role: ROLES.TECHNICIAN }]);
+    // El catálogo activo no contiene el restaurante pedido.
+    mocks.state.selectQueue.push([]);
+    const resultado = await setTechnicianAssignmentsAction({
+      userId: "u-2",
+      restaurantIds: ["r-inexistente"],
+    });
+    expect(resultado.ok).toBe(false);
+    expect(resultado).toMatchObject({
+      error: expect.stringMatching(/no existen o están inactivos/i),
+    });
+    // La validación corre ANTES de mutar: nada se borra ni se inserta.
+    expect(mocks.state.deleteCalled).toBe(0);
+    expect(mocks.state.inserts).toHaveLength(0);
+  });
+
+  it("solo acepta restaurantes presentes en el catálogo activo", async () => {
+    como(ROLES.ADMIN);
+    mocks.state.selectQueue.push([{ role: ROLES.TECHNICIAN }]);
+    // De los dos pedidos, solo r-a está activo: la operación completa falla.
+    mocks.state.selectQueue.push([{ id: "r-a" }]);
+    const resultado = await setTechnicianAssignmentsAction({
+      userId: "u-2",
+      restaurantIds: ["r-a", "r-inactivo"],
+    });
+    expect(resultado.ok).toBe(false);
+    expect(mocks.state.deleteCalled).toBe(0);
   });
 
   it("no permite reasignar a un usuario que NO es técnico", async () => {
@@ -231,23 +286,25 @@ describe("setTechnicianAssignmentsAction: puerta y reglas (#16)", () => {
     expect(mocks.state.inserts).toHaveLength(0);
   });
 
-  it("un HEAD no puede reasignarse a sí mismo", async () => {
+  it("un HEAD puede reasignarse a sí mismo (#18)", async () => {
     como(ROLES.HEAD_TECHNICIAN, "u-2");
     mocks.state.selectQueue.push([{ role: ROLES.HEAD_TECHNICIAN }]);
+    mocks.state.selectQueue.push([{ id: "r-a" }]);
     const resultado = await setTechnicianAssignmentsAction({
       userId: "u-2",
       restaurantIds: ["r-a"],
     });
-    expect(resultado.ok).toBe(false);
-    expect(resultado).toMatchObject({
-      error: expect.stringMatching(/tus propias/i),
-    });
-    expect(mocks.state.deleteCalled).toBe(0);
+    expect(resultado.ok).toBe(true);
+    expect(mocks.state.deleteCalled).toBe(1);
+    expect(mocks.state.inserts.at(-1)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ userId: "u-2" })]),
+    );
   });
 
   it("un HEAD puede reasignar a OTRO técnico", async () => {
     como(ROLES.HEAD_TECHNICIAN, "u-1");
     mocks.state.selectQueue.push([{ role: ROLES.TECHNICIAN }]);
+    mocks.state.selectQueue.push([{ id: "r-a" }]);
     const resultado = await setTechnicianAssignmentsAction({
       userId: "u-2",
       restaurantIds: ["r-a"],
@@ -429,5 +486,32 @@ describe("updateUserAction: no permite autodespojarse del rol admin", () => {
       error: expect.stringMatching(/quitarte/i),
     });
     expect(mocks.state.updateSets).toHaveLength(0);
+  });
+});
+
+describe("updateUserAction: valida asignaciones antes de actualizar (R1)", () => {
+  it("un restaurante inválido NO actualiza al usuario", async () => {
+    como(ROLES.ADMIN, "u-1");
+    // getUserAccount devuelve al técnico objetivo.
+    mocks.state.selectQueue.push([
+      { id: "u-2", role: ROLES.TECHNICIAN, active: true, deletedAt: null },
+    ]);
+    // Validación previa: el catálogo activo no contiene el restaurante pedido.
+    mocks.state.selectQueue.push([]);
+    const resultado = await updateUserAction({
+      id: "u-2",
+      name: "Técnico Dos",
+      email: "tec2@test.local",
+      role: ROLES.TECHNICIAN,
+      restaurantIds: ["r-inexistente"],
+    });
+    expect(resultado.ok).toBe(false);
+    expect(resultado).toMatchObject({
+      error: expect.stringMatching(/no existen o están inactivos/i),
+    });
+    // No se actualiza el usuario ni se tocan las asignaciones.
+    expect(mocks.state.updateSets).toHaveLength(0);
+    expect(mocks.state.deleteCalled).toBe(0);
+    expect(mocks.state.inserts).toHaveLength(0);
   });
 });

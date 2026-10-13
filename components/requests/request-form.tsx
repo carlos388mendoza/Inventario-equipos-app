@@ -11,9 +11,7 @@ import {
   type RequestKind,
 } from "@/lib/validation/requests";
 import {
-  ALL_DESTINATION_AREAS,
   ALL_REQUEST_PRIORITY,
-  DESTINATION_AREA_LABELS,
   REQUEST_PRIORITY_LABELS,
 } from "@/lib/db/enums";
 import { Button } from "@/components/ui/button";
@@ -355,19 +353,14 @@ export function RequestForm({
         </div>
 
         <div className="space-y-2">
-          <Label>Área de destino</Label>
-          <Select value={destinationArea} onValueChange={setDestinationArea}>
-            <SelectTrigger>
-              <SelectValue placeholder="Sin especificar" />
-            </SelectTrigger>
-            <SelectContent>
-              {ALL_DESTINATION_AREAS.map((area) => (
-                <SelectItem key={area} value={area}>
-                  {DESTINATION_AREA_LABELS[area]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="req-destination-area">Área de destino</Label>
+          <Input
+            id="req-destination-area"
+            value={destinationArea}
+            onChange={(e) => setDestinationArea(e.target.value)}
+            placeholder="Ej. Cocina, counter, área de domicilio…"
+            maxLength={120}
+          />
           <p className="text-xs text-muted-foreground">
             Dónde se instalará el equipo dentro del restaurante.
           </p>

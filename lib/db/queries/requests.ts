@@ -9,9 +9,6 @@ import {
   userTable,
 } from "@/lib/db/schema";
 import {
-  asUserRole,
-  isTechnicianRole,
-  type DestinationArea,
   type RequestInstallationStatus,
   type RequestPriority,
   type RequestStatus,
@@ -30,7 +27,7 @@ export interface RequestWithNames {
   equipmentTypeName: string;
   currentEquipmentId: string | null;
   currentEquipmentAssetCode: string | null;
-  destinationArea: DestinationArea | null;
+  destinationArea: string | null;
   reason: string;
   description: string | null;
   priority: RequestPriority;
@@ -152,27 +149,25 @@ export async function listRequestHistory(
 }
 
 /**
- * Técnico que solicitó el reemplazo de un equipo (issue #12).
+ * Solicitante de la solicitud que originó el reemplazo de un equipo (issue #12).
  *
- * Solo se devuelve cuando existe un vínculo DIRECTO y fiable: una solicitud de
- * reemplazo cuyo `currentEquipmentId` es ese equipo y cuyo solicitante tiene un
- * rol técnico. Se devuelve únicamente el nombre; nunca el correo ni datos de la
- * solicitud. Si el solicitante fuera un `RESTAURANT_USER`, no se expone nada.
+ * Se usa en la página pública del QR (`app/e/[token]`): el vínculo fiable es la
+ * solicitud de REEMPLAZO cuyo `currentEquipmentId` es ese equipo. Se devuelve el
+ * nombre de quien la creó, sea técnico o no (decisión del issue #12). La consulta
+ * selecciona ÚNICAMENTE el nombre: nunca el correo, el rol ni el resto de la
+ * solicitud. Si no hay ninguna solicitud de reemplazo enlazada, no se muestra
+ * nada.
  */
-export async function getEquipmentRequesterTechnician(
+export async function getEquipmentRequester(
   equipmentId: string
 ): Promise<{ name: string } | null> {
-  const rows = await db
-    .select({ name: userTable.name, role: userTable.role })
+  const [row] = await db
+    .select({ name: userTable.name })
     .from(equipmentRequests)
     .innerJoin(userTable, eq(equipmentRequests.requestedBy, userTable.id))
     .where(eq(equipmentRequests.currentEquipmentId, equipmentId))
-    .orderBy(desc(equipmentRequests.createdAt));
+    .orderBy(desc(equipmentRequests.createdAt))
+    .limit(1);
 
-  for (const row of rows) {
-    if (isTechnicianRole(asUserRole(row.role))) {
-      return { name: row.name };
-    }
-  }
-  return null;
+  return row ? { name: row.name } : null;
 }

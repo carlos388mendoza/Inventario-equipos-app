@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { ROLE_LABELS } from "@/lib/db/enums";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
 
@@ -37,7 +38,10 @@ export function TechnicianManager({
   technicians: TechnicianDto[];
   restaurants: RestaurantOptionDto[];
   currentUserId: string;
-  /** Solo ADMIN puede reasignarse a sí mismo si además es jefe de técnicos. */
+  /**
+   * Si el usuario actual puede editar sus PROPIAS asignaciones. Lo tienen el
+   * administrador y, desde el issue #18, el jefe de técnicos.
+   */
   canEditSelf: boolean;
 }) {
   const [editing, setEditing] = React.useState<TechnicianDto | null>(null);
@@ -50,12 +54,6 @@ export function TechnicianManager({
   function openEdit(technician: TechnicianDto) {
     setEditing(technician);
     setSelected([...technician.assignedRestaurantIds]);
-  }
-
-  function toggle(id: string) {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
   }
 
   function save() {
@@ -169,23 +167,21 @@ export function TechnicianManager({
               Asignaciones de {editing?.name ?? ""}
             </DialogTitle>
           </DialogHeader>
-          <div className="max-h-72 space-y-1 overflow-y-auto rounded-md border p-2">
-            {restaurants.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No hay restaurantes activos.
-              </p>
-            )}
-            {restaurants.map((r) => (
-              <label key={r.id} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
-                  checked={selected.includes(r.id)}
-                  onChange={() => toggle(r.id)}
-                />
-                {r.name} ({r.code})
-              </label>
-            ))}
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground">
+              Marca los restaurantes que este técnico puede atender.
+            </p>
+            <MultiSelect
+              options={restaurants.map((r) => ({
+                value: r.id,
+                label: `${r.name} (${r.code})`,
+              }))}
+              selected={selected}
+              onChange={setSelected}
+              placeholder="Selecciona restaurantes"
+              searchPlaceholder="Buscar restaurante…"
+              emptyLabel="No hay restaurantes activos."
+            />
           </div>
           <DialogFooter>
             <DialogClose asChild>

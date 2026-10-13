@@ -236,6 +236,21 @@ export function isDestinationArea(value: unknown): value is DestinationArea {
   );
 }
 
+/**
+ * Texto a mostrar para el "área de destino" (issue #20).
+ *
+ * El campo pasó de ser una lista cerrada a texto libre. Los valores del catálogo
+ * histórico (`DESTINATION_AREA`) se siguen mostrando con su etiqueta para no
+ * cambiar cómo se leen las solicitudes ya guardadas; cualquier otro texto se
+ * muestra tal cual y un valor vacío como "Sin especificar".
+ */
+export function formatDestinationArea(
+  value: string | null | undefined
+): string {
+  if (!value) return "Sin especificar";
+  return isDestinationArea(value) ? DESTINATION_AREA_LABELS[value] : value;
+}
+
 // ─── Seguimiento de instalación (issue #13) ─────────────────────────────────
 /**
  * Estado de instalación de una solicitud aprobada. Es independiente del
