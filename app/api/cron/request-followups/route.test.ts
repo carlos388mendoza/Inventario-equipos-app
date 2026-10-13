@@ -11,6 +11,8 @@ import { NextRequest } from "next/server";
  *  - sin proveedor de correo (`RESEND_API_KEY`) no se reclama nada ni se toca
  *    la base de datos: el seguimiento queda pendiente para cuando se configure;
  *  - una fila ya reclamada por otra ejecución concurrente no se reenvía;
+ *  - si el envío no se procesa se LIBERA la reclamación (no se marca como
+ *    enviado) y se reintenta en la siguiente ejecución;
  *  - la respuesta no filtra el secreto.
  */
 
@@ -20,9 +22,18 @@ const mocks = vi.hoisted(() => {
     dueRows: [] as { id: string }[],
     claimed: new Set<string>(),
     claimResult: null as number | null,
+    releases: [] as string[],
     contexts: {} as Record<string, unknown>,
     sendCalls: [] as string[],
     sendShouldThrow: false,
+    sendResult: {
+      token: "token-de-prueba",
+      tokenId: "tok-1",
+      recipients: ["una@test.local"],
+      sent: 1,
+      skipped: 0,
+      failed: 0,
+    },
   };
 
   const selectLeaf = () => state.dueRows;
@@ -34,6 +45,23 @@ const mocks = vi.hoisted(() => {
   selectChain.limit = () => selectChain;
   selectChain.then = (resolve: (v: unknown) => unknown) => resolve(selectLeaf());
 
+  const updateSet = (payload: Record<string, unknown>) => ({
+    where: () => ({
+      then: (resolve: (v: unknown) => unknown) => {
+        // El `where` filtra por id; se simula aquí. Una reclamación nula es
+        // una liberación (no se da por enviado).
+        const id = state.dueRows[0]?.id ?? "";
+        if (payload.followUpSentAt === null) state.releases.push(id);
+        let rowsAffected = state.claimResult;
+        if (rowsAffected === null) {
+          rowsAffected = state.claimed.has(id) ? 0 : 1;
+          state.claimed.add(id);
+        }
+        return resolve({ rowsAffected });
+      },
+    }),
+  });
+
   return {
     state,
     db: {
@@ -43,22 +71,11 @@ const mocks = vi.hoisted(() => {
       },
       update: () => {
         state.dbTouched = true;
-        return {
-          set: () => ({
-            where: () => ({
-              then: (resolve: (v: unknown) => unknown) => {
-                // El `where` de la reclamación filtra por id; se simula aquí.
-                const id = state.dueRows[0]?.id ?? "";
-                let rowsAffected = state.claimResult;
-                if (rowsAffected === null) {
-                  rowsAffected = state.claimed.has(id) ? 0 : 1;
-                  state.claimed.add(id);
-                }
-                return resolve({ rowsAffected });
-              },
-            }),
-          }),
-        };
+        return { set: updateSet };
+      },
+      delete: () => {
+        state.dbTouched = true;
+        return { where: () => ({ then: (resolve: (v: unknown) => unknown) => resolve(undefined) }) };
       },
     },
     loadRequestContext: vi.fn(async (id: string) => {
@@ -68,7 +85,7 @@ const mocks = vi.hoisted(() => {
     sendInstallationFollowUp: vi.fn(async (ctx: { id: string }) => {
       state.sendCalls.push(ctx.id);
       if (state.sendShouldThrow) throw new Error("proveedor caído");
-      return { token: "token-de-prueba", recipients: [] };
+      return { ...state.sendResult, recipients: [...state.sendResult.recipients] };
     }),
   };
 });
@@ -97,6 +114,7 @@ describe("autorización del cron", () => {
     mocks.state.dueRows = [];
     mocks.state.claimed = new Set();
     mocks.state.claimResult = null;
+    mocks.state.releases = [];
     mocks.state.contexts = {};
     mocks.state.sendCalls = [];
     mocks.state.sendShouldThrow = false;
@@ -185,9 +203,18 @@ describe("concurrencia y fallos del cron", () => {
     mocks.state.dueRows = [{ id: "req-1" }];
     mocks.state.claimed = new Set();
     mocks.state.claimResult = null;
+    mocks.state.releases = [];
     mocks.state.contexts = {};
     mocks.state.sendCalls = [];
     mocks.state.sendShouldThrow = false;
+    mocks.state.sendResult = {
+      token: "token-de-prueba",
+      tokenId: "tok-1",
+      recipients: ["una@test.local"],
+      sent: 1,
+      skipped: 0,
+      failed: 0,
+    };
     mocks.loadRequestContext.mockClear();
     mocks.sendInstallationFollowUp.mockClear();
   });
@@ -201,13 +228,31 @@ describe("concurrencia y fallos del cron", () => {
     const res = await GET(peticion({ "x-cron-secret": SECRETO }));
     await expect(res.json()).resolves.toMatchObject({ sent: 0, failed: 0 });
     expect(mocks.state.sendCalls).toEqual([]);
+    expect(mocks.state.releases).toEqual([]);
   });
 
-  it("un fallo del envío no aborta el proceso y se cuenta como failed", async () => {
+  it("un fallo del envío no aborta el proceso, se cuenta como failed y libera la reclamación", async () => {
     mocks.state.sendShouldThrow = true;
     const res = await GET(peticion({ "x-cron-secret": SECRETO }));
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({ sent: 0, failed: 1 });
+    expect(mocks.state.sendCalls).toEqual(["req-1"]);
+    expect(mocks.state.releases).toEqual(["req-1"]);
+  });
+
+  it("un envío que no se procesa no se marca como enviado (se libera la reclamación)", async () => {
+    mocks.state.sendResult = {
+      token: "token-de-prueba",
+      tokenId: "tok-1",
+      recipients: ["una@test.local"],
+      sent: 0,
+      skipped: 0,
+      failed: 1,
+    };
+    const res = await GET(peticion({ "x-cron-secret": SECRETO }));
+    await expect(res.json()).resolves.toMatchObject({ sent: 0, failed: 1 });
+    expect(mocks.state.sendCalls).toEqual(["req-1"]);
+    expect(mocks.state.releases).toEqual(["req-1"]);
   });
 
   it("una solicitud sin contexto se cuenta como failed sin enviar", async () => {
@@ -215,5 +260,6 @@ describe("concurrencia y fallos del cron", () => {
     const res = await GET(peticion({ "x-cron-secret": SECRETO }));
     await expect(res.json()).resolves.toMatchObject({ sent: 0, failed: 1 });
     expect(mocks.state.sendCalls).toEqual([]);
+    expect(mocks.state.releases).toEqual([]);
   });
 });

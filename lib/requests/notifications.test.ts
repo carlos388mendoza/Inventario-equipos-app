@@ -23,7 +23,8 @@ import { recordNotifications } from "@/lib/requests/notifications";
  *  - cada estado del proveedor se persiste tal cual (SENT/SKIPPED/FAILED);
  *  - `SENT` marca `sentAt`; `SKIPPED`/`FAILED` NO (nunca se comunica como
  *    enviado lo que no lo fue);
- *  - los tipos de un solo envío no se duplican;
+ *  - los tipos de un solo envío no se duplican mientras haya un envío en
+ *    PENDING/SENT/SKIPPED, pero un envío FAILED NO bloquea el reintento;
  *  - sin destinatarios no se inserta ni se envía nada.
  */
 
@@ -199,15 +200,16 @@ describe("recordNotifications: control de duplicados (un solo envío)", () => {
     expect(mocks.state.sendCalls).toHaveLength(1);
   });
 
-  it("un envío FAILED anterior también bloquea el reenvío del mismo tipo", async () => {
+  it("un envío FAILED no bloquea: el mismo tipo puede reintentarse", async () => {
     mocks.state.result = { status: "FAILED", provider: "resend" };
     await recordNotifications(entrada());
     mocks.state.result = { status: "SENT", provider: "resend" };
     await recordNotifications(entrada());
 
     const rows = await filas();
-    expect(rows).toHaveLength(1);
-    expect(rows[0].status).toBe(REQUEST_NOTIFICATION_STATUS.FAILED);
-    expect(mocks.state.sendCalls).toHaveLength(1);
+    expect(rows).toHaveLength(2);
+    expect(rows[1].status).toBe(REQUEST_NOTIFICATION_STATUS.SENT);
+    expect(rows[1].sentAt).toBeInstanceOf(Date);
+    expect(mocks.state.sendCalls).toHaveLength(2);
   });
 });

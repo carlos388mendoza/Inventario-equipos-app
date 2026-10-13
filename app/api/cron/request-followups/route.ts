@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { and, eq, isNull, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { equipmentRequests } from "@/lib/db/schema";
+import { equipmentRequests, requestConfirmationTokens } from "@/lib/db/schema";
 import {
   REQUEST_INSTALLATION_STATUS,
   REQUEST_STATUS,
@@ -31,7 +31,12 @@ export const dynamic = "force-dynamic";
  * Concurrencia: antes de enviar, el cron "reclama" la fila con un UPDATE
  * condicional (`WHERE follow_up_sent_at IS NULL`). Si otra ejecución simultánea
  * ya la reclamó, `rowsAffected` es 0 y se omite: no se envían correos
- * duplicados. El envío es de un solo intento por solicitud (a lo sumo una vez).
+ * duplicados.
+ *
+ * Si el envío no se puede procesar (ningún correo quedó en `SENT`), la
+ * reclamación se libera (se vuelve a `followUpSentAt = null`) y el token de
+ * confirmación creado se elimina: el seguimiento NO queda marcado como enviado
+ * y se reintenta en la siguiente ejecución.
  *
  * Ejemplo de invocación (programar en Vercel Cron):
  *   GET /api/cron/request-followups   Header: x-cron-secret: <CRON_SECRET>
@@ -101,16 +106,46 @@ export async function GET(request: NextRequest) {
         failed += 1;
         continue;
       }
-      await sendInstallationFollowUp(context);
-      sent += 1;
+      const result = await sendInstallationFollowUp(context);
+      if (result.sent > 0 || result.recipients.length === 0) {
+        sent += 1;
+      } else {
+        // Ningún correo llegó a enviarse: se libera la reclamación para que el
+        // seguimiento no quede marcado como enviado y pueda reintentarse, y se
+        // elimina el token de confirmación huérfano (nadie recibió el enlace).
+        failed += 1;
+        await releaseFollowUpClaim(row.id, claimedAt);
+        if (result.tokenId) {
+          await db
+            .delete(requestConfirmationTokens)
+            .where(eq(requestConfirmationTokens.id, result.tokenId));
+        }
+      }
     } catch {
-      // El error queda registrado en la bandeja de salida (estado FAILED);
-      // no se reintenta de forma indefinida ni se expone el secreto.
+      // El error queda registrado en la bandeja de salida (estado FAILED) y se
+      // libera la reclamación: no se da por enviado y se reintentará.
       failed += 1;
+      await releaseFollowUpClaim(row.id, claimedAt);
     }
   }
 
   return NextResponse.json({ ok: true, sent, failed });
+}
+
+/**
+ * Revierte la marca de seguimiento SOLO si sigue siendo la reclamación hecha
+ * (y no se ha sobrescrito por otra ejecución).
+ */
+async function releaseFollowUpClaim(requestId: string, claimedAt: Date) {
+  await db
+    .update(equipmentRequests)
+    .set({ followUpSentAt: null })
+    .where(
+      and(
+        eq(equipmentRequests.id, requestId),
+        eq(equipmentRequests.followUpSentAt, claimedAt)
+      )
+    );
 }
 
 /** Secreto presentado en la cabecera dedicada o en `Authorization: Bearer`. */

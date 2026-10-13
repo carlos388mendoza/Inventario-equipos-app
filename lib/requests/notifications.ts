@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   equipment,
@@ -37,6 +37,13 @@ export interface RequestContext {
   reason: string;
   destinationArea: DestinationArea | null;
   currentEquipmentAssetCode: string | null;
+}
+
+/** Resultado agregado de un envío: cuántos correos quedaron en cada estado. */
+export interface NotificationOutcomes {
+  sent: number;
+  skipped: number;
+  failed: number;
 }
 
 /** Datos necesarios para redactar una notificación de una solicitud. */
@@ -117,9 +124,13 @@ export async function getRestaurantRecipientEmails(
 /**
  * Registra y envía notificaciones para una solicitud.
  *
+ * Devuelve cuántos correos quedaron en cada estado, para que el cron de
+ * seguimiento pueda saber si realmente se procesó algún envío.
+ *
  * Los tipos de un solo envío (`ONE_SHOT_NOTIFICATION_TYPES`) se saltan si ya
- * existe cualquier fila de ese tipo para la solicitud: así no se duplican
- * aunque la acción se reintente o el correo falle.
+ * existe una fila de ese tipo en estado PENDING/SENT/SKIPPED: así no se
+ * duplican aunque la acción se reintente. Una fila FAILED NO bloquea: un
+ * correo que falló no se considera entregado y puede reintentarse.
  */
 export async function recordNotifications(input: {
   requestId: string;
@@ -127,9 +138,9 @@ export async function recordNotifications(input: {
   recipients: string[];
   subject: string;
   body: string;
-}): Promise<void> {
+}): Promise<NotificationOutcomes> {
   const recipients = [...new Set(input.recipients.map((r) => r.toLowerCase()))].filter(Boolean);
-  if (recipients.length === 0) return;
+  if (recipients.length === 0) return { sent: 0, skipped: 0, failed: 0 };
 
   if (ONE_SHOT_NOTIFICATION_TYPES.includes(input.type)) {
     const [existing] = await db
@@ -138,12 +149,17 @@ export async function recordNotifications(input: {
       .where(
         and(
           eq(requestNotifications.requestId, input.requestId),
-          eq(requestNotifications.type, input.type)
+          eq(requestNotifications.type, input.type),
+          notInArray(requestNotifications.status, [
+            REQUEST_NOTIFICATION_STATUS.FAILED,
+          ])
         )
       )
       .limit(1);
-    if (existing) return;
+    if (existing) return { sent: 0, skipped: 0, failed: 0 };
   }
+
+  const outcomes: NotificationOutcomes = { sent: 0, skipped: 0, failed: 0 };
 
   for (const recipient of recipients) {
     const id = crypto.randomUUID();
@@ -164,6 +180,10 @@ export async function recordNotifications(input: {
       text: input.body,
     });
 
+    if (result.status === "SENT") outcomes.sent += 1;
+    else if (result.status === "SKIPPED") outcomes.skipped += 1;
+    else outcomes.failed += 1;
+
     await db
       .update(requestNotifications)
       .set({
@@ -174,6 +194,8 @@ export async function recordNotifications(input: {
       })
       .where(eq(requestNotifications.id, id));
   }
+
+  return outcomes;
 }
 
 function areaLabel(area: DestinationArea | null): string {
@@ -247,16 +269,23 @@ export async function notifyRequestDecision(
   });
 }
 
+export interface FollowUpResult extends NotificationOutcomes {
+  token: string;
+  tokenId: string;
+  recipients: string[];
+}
+
 /** Correo de seguimiento de instalación (aprobación + N días). */
 export async function sendInstallationFollowUp(
   ctx: RequestContext
-): Promise<{ token: string; recipients: string[] }> {
+): Promise<FollowUpResult> {
   const token = crypto.randomUUID().replaceAll("-", "");
+  const tokenId = crypto.randomUUID();
   const expiresAt = new Date(
     Date.now() + INSTALLATION_FOLLOW_UP_DAYS * 2 * 24 * 60 * 60 * 1000
   );
   await db.insert(requestConfirmationTokens).values({
-    id: crypto.randomUUID(),
+    id: tokenId,
     requestId: ctx.id,
     token,
     purpose: "INSTALLATION_FOLLOWUP",
@@ -269,7 +298,7 @@ export async function sendInstallationFollowUp(
   if (requesterEmail) recipients.push(requesterEmail);
 
   const link = `${appBaseUrl()}/confirmar/${token}`;
-  await recordNotifications({
+  const outcomes = await recordNotifications({
     requestId: ctx.id,
     type: REQUEST_NOTIFICATION_TYPE.FOLLOW_UP,
     recipients,
@@ -279,7 +308,7 @@ export async function sendInstallationFollowUp(
     )}\n\nConfirma o indica que AÚN NO se ha instalado en: ${link}`,
   });
 
-  return { token, recipients };
+  return { token, tokenId, recipients, ...outcomes };
 }
 
 /** Aviso a aprobadores y unidad del resultado de instalación. */
