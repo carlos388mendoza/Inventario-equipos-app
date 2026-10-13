@@ -1,10 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  canEmailRecipient,
   configuredApproverEmails,
+  emailMode,
   emailProviderName,
   mailFrom,
   sendEmail,
+  testAllowedRecipients,
 } from "@/lib/email/send";
 
 /**
@@ -13,7 +16,9 @@ import {
  * Definición verificada:
  *  - `SENT`    → el proveedor aceptó el mensaje (respuesta HTTP 2xx).
  *  - `SKIPPED` → NO se intentó enviar: falta la configuración (sin
- *                `RESEND_API_KEY`). Nunca debe convertirse en `SENT`.
+ *                `RESEND_API_KEY`) o, en modo `test`, el destinatario no está
+ *                autorizado en `MAIL_TEST_RECIPIENTS`. Nunca se convierte en
+ *                `SENT`.
  *  - `FAILED`  → se intentó enviar y falló (HTTP no-2xx o error de red).
  *
  * Este módulo no registra en la base de datos; solo devuelve el resultado.
@@ -35,11 +40,49 @@ describe("configuración del proveedor", () => {
     expect(emailProviderName()).toBe("resend");
   });
 
-  it("mailFrom usa MAIL_FROM o un remitente por defecto", () => {
+  it("mailFrom en producción usa MAIL_FROM o un remitente por defecto", () => {
+    vi.stubEnv("MAIL_MODE", "production");
     vi.stubEnv("MAIL_FROM", "");
     expect(mailFrom()).toContain("no-reply@");
     vi.stubEnv("MAIL_FROM", "Equipo <avisos@test.local>");
     expect(mailFrom()).toBe("Equipo <avisos@test.local>");
+  });
+
+  it("en modo de prueba mailFrom fuerza el sandbox e ignora MAIL_FROM", () => {
+    vi.stubEnv("MAIL_MODE", "");
+    vi.stubEnv("MAIL_FROM", "Equipo <avisos@test.local>");
+    expect(emailMode()).toBe("test");
+    expect(mailFrom()).toBe("Inventario de Equipos <onboarding@resend.dev>");
+  });
+
+  it("emailMode es 'production' solo con MAIL_MODE='production'", () => {
+    vi.stubEnv("MAIL_MODE", "production");
+    expect(emailMode()).toBe("production");
+    vi.stubEnv("MAIL_MODE", "test");
+    expect(emailMode()).toBe("test");
+    vi.stubEnv("MAIL_MODE", "");
+    expect(emailMode()).toBe("test");
+  });
+
+  it("testAllowedRecipients normaliza, recorta y descarta vacíos", () => {
+    vi.stubEnv(
+      "MAIL_TEST_RECIPIENTS",
+      "  Carlos@Gmail.com , ,otro@test.local "
+    );
+    expect(testAllowedRecipients()).toEqual([
+      "carlos@gmail.com",
+      "otro@test.local",
+    ]);
+  });
+
+  it("canEmailRecipient solo limita en modo de prueba", () => {
+    vi.stubEnv("MAIL_MODE", "test");
+    vi.stubEnv("MAIL_TEST_RECIPIENTS", "autorizado@test.local");
+    expect(canEmailRecipient("Autorizado@Test.local")).toBe(true);
+    expect(canEmailRecipient("empleado@grupo.comidas")).toBe(false);
+
+    vi.stubEnv("MAIL_MODE", "production");
+    expect(canEmailRecipient("empleado@grupo.comidas")).toBe(true);
   });
 
   it("configuredApproverEmails normaliza, recorta y descarta vacíos", () => {
@@ -73,6 +116,7 @@ describe("sendEmail: estados", () => {
 
   it("con respuesta 2xx devuelve SENT", async () => {
     vi.stubEnv("RESEND_API_KEY", "clave-de-prueba");
+    vi.stubEnv("MAIL_MODE", "production");
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({ ok: true, status: 200, text: async () => "" }))
@@ -91,6 +135,7 @@ describe("sendEmail: estados", () => {
 
   it("con respuesta no-2xx devuelve FAILED con el detalle del proveedor", async () => {
     vi.stubEnv("RESEND_API_KEY", "clave-de-prueba");
+    vi.stubEnv("MAIL_MODE", "production");
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
@@ -113,6 +158,7 @@ describe("sendEmail: estados", () => {
 
   it("un error de red devuelve FAILED", async () => {
     vi.stubEnv("RESEND_API_KEY", "clave-de-prueba");
+    vi.stubEnv("MAIL_MODE", "production");
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => {
@@ -128,5 +174,52 @@ describe("sendEmail: estados", () => {
 
     expect(res.status).toBe("FAILED");
     expect(res.error).toContain("ECONNRESET");
+  });
+
+  it("en modo de prueba un destinatario NO autorizado queda SKIPPED sin tocar la red", async () => {
+    vi.stubEnv("RESEND_API_KEY", "clave-de-prueba");
+    vi.stubEnv("MAIL_MODE", "test");
+    vi.stubEnv("MAIL_TEST_RECIPIENTS", "autorizado@test.local");
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await sendEmail({
+      to: "empleado@grupo.comidas",
+      subject: "Hola",
+      text: "Cuerpo",
+    });
+
+    expect(res.status).toBe("SKIPPED");
+    expect(res.provider).toBe("resend");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("en modo de prueba un destinatario autorizado se envía con el sandbox", async () => {
+    vi.stubEnv("RESEND_API_KEY", "clave-de-prueba");
+    vi.stubEnv("MAIL_MODE", "test");
+    vi.stubEnv("MAIL_FROM", "Equipo <avisos@test.local>");
+    vi.stubEnv("MAIL_TEST_RECIPIENTS", "autorizado@test.local");
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => "",
+    }));
+    vi.stubGlobal("fetch", fetchSpy);
+
+    const res = await sendEmail({
+      to: "Autorizado@test.local",
+      subject: "Hola",
+      text: "Cuerpo",
+    });
+
+    expect(res.status).toBe("SENT");
+    expect(res.provider).toBe("resend");
+    const [, init] = fetchSpy.mock.calls[0] as unknown as [
+      string,
+      { body: string },
+    ];
+    const body = JSON.parse(init.body);
+    expect(body.from).toBe("Inventario de Equipos <onboarding@resend.dev>");
+    expect(body.to).toEqual(["Autorizado@test.local"]);
   });
 });

@@ -156,6 +156,8 @@ Endpoints API:
 | `/api/auth/[...all]` | Better Auth (correo + contraseña) |
 | `/api/ai/stats-agent` | ADMIN, IT_MANAGER |
 | `/api/ai/voice-request` | ADMIN, IT_MANAGER, RESTAURANT_USER (dentro de su alcance) |
+| `/api/cron/request-followups` | `CRON_SECRET` (`x-cron-secret` o `Authorization: Bearer`) |
+| `/api/email/test-send` | `CRON_SECRET`; solo modo `test` y solo a `MAIL_TEST_RECIPIENTS` |
 
 ---
 
@@ -376,6 +378,14 @@ Plantilla en [`.env.example`](.env.example). `.env*` está en `.gitignore`.
 | `NEXT_PUBLIC_APP_URL` | URL pública: QR y SEO (canonical, robots, sitemap). | El SEO usa `https://inventario-equipos-app.vercel.app`. |
 | `OPENROUTER_API_KEY` | Proveedor de IA. | Las funciones de IA se deshabilitan. |
 | `AI_MODEL` | Modelo de OpenRouter. | `openai/gpt-4o-mini`. |
+| `RESEND_API_KEY` | Envío de correo (Resend). | Las notificaciones quedan en `SKIPPED`. |
+| `MAIL_MODE` | `production` activa el envío real; si no, modo `test` seguro. | Modo `test`: solo a `MAIL_TEST_RECIPIENTS` por el sandbox. |
+| `MAIL_TEST_RECIPIENTS` | Allowlist de correo en modo `test`. | Ningún destinatario autorizado. |
+| `MAIL_FROM` | Remitente verificado (solo `production`). | Respaldo local sin verificar. |
+| `REQUEST_APPROVER_EMAILS` | Avisos de aprobación. | Se avisa a los ADMIN activos. |
+| `CRON_SECRET` | Protege el cron y el endpoint de correo de prueba. | Ambos responden `401`. |
+
+Detalle en [`docs/CORREO.md`](docs/CORREO.md).
 
 ---
 
@@ -571,5 +581,6 @@ documentado en [`docs/PLANIFICACION.md`](docs/PLANIFICACION.md).
 | [`docs/IA.md`](docs/IA.md) | Desarrollador: las dos funciones de IA y su seguridad. |
 | [`docs/SEO-Y-EXPOSICION.md`](docs/SEO-Y-EXPOSICION.md) | Profesor y visitante: qué es indexable y cómo darlo de alta. |
 | [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md) | Desarrollador: despliegue en Vercel y rollback. |
+| [`docs/CORREO.md`](docs/CORREO.md) | Desarrollador: correo, modo de prueba y paso a producción. |
 | [`docs/PLANIFICACION.md`](docs/PLANIFICACION.md) | Profesor: qué está pendiente y qué se descartó. |
 | [`AGENTS.md`](AGENTS.md) | Reglas del repositorio para asistentes de IA. |

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHash, timingSafeEqual } from "node:crypto";
 import { and, eq, isNull, lte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { equipmentRequests, requestConfirmationTokens } from "@/lib/db/schema";
@@ -12,6 +11,7 @@ import {
   sendInstallationFollowUp,
 } from "@/lib/requests/notifications";
 import { emailProviderName } from "@/lib/email/send";
+import { isAuthorizedCronRequest } from "@/lib/security/cron-secret";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,11 +42,8 @@ export const dynamic = "force-dynamic";
  *   GET /api/cron/request-followups   Header: x-cron-secret: <CRON_SECRET>
  */
 export async function GET(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  const provided = providedSecret(request);
-
   // La autorización se comprueba ANTES de cualquier consulta o efecto.
-  if (!secret || !secretsMatch(provided, secret)) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -146,28 +143,4 @@ async function releaseFollowUpClaim(requestId: string, claimedAt: Date) {
         eq(equipmentRequests.followUpSentAt, claimedAt)
       )
     );
-}
-
-/** Secreto presentado en la cabecera dedicada o en `Authorization: Bearer`. */
-function providedSecret(request: NextRequest): string | null {
-  const header = request.headers.get("x-cron-secret");
-  if (header) return header;
-  const authz = request.headers.get("authorization");
-  if (authz?.startsWith("Bearer ")) return authz.slice("Bearer ".length);
-  return null;
-}
-
-/**
- * Compara dos secretos en tiempo constante.
- *
- * Se comparan los resúmenes SHA-256 para que la comprobación no dependa de la
- * longitud (que `timingSafeEqual` exige igual) ni del contenido, evitando
- * ataques de temporización. `timingSafeEqual` existe en el runtime Node.js que
- * usa esta ruta (`export const runtime = "nodejs"`).
- */
-function secretsMatch(provided: string | null, expected: string): boolean {
-  if (!provided) return false;
-  const a = createHash("sha256").update(provided).digest();
-  const b = createHash("sha256").update(expected).digest();
-  return timingSafeEqual(a, b);
 }
