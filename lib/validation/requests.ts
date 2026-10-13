@@ -1,7 +1,9 @@
 import { z } from "zod";
 import {
+  ALL_DESTINATION_AREAS,
   ALL_REQUEST_PRIORITY,
   ALL_REQUEST_STATUS,
+  type DestinationArea,
   type RequestPriority,
   type RequestStatus,
 } from "@/lib/db/enums";
@@ -39,6 +41,16 @@ export const requestInputSchema = z
       .string()
       .trim()
       .max(2000, "La descripción no puede superar 2000 caracteres.")
+      .optional()
+      .or(z.literal("")),
+    /**
+     * Área física de destino (issue #14). Se valida contra la lista cerrada;
+     * vacío/omitido equivale a "sin especificar".
+     */
+    destinationArea: z
+      .enum(ALL_DESTINATION_AREAS as [DestinationArea, ...DestinationArea[]], {
+        message: "Área de destino no válida.",
+      })
       .optional()
       .or(z.literal("")),
     restaurantId: z.string().optional().or(z.literal("")),

@@ -1,7 +1,8 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { resolveScope } from "@/lib/equipment/scope";
+import { resolveScope, canAccessRestaurant } from "@/lib/equipment/scope";
+import { isNextRedirect } from "@/lib/auth/redirect";
 import { db } from "@/lib/db";
 import { equipmentRequests } from "@/lib/db/schema";
 import { listRequestHistory, type RequestHistoryWithNames } from "@/lib/db/queries/requests";
@@ -26,8 +27,7 @@ export async function getMyRequestHistory(
       .limit(1);
 
     if (!row) return { ok: false, error: "Solicitud no encontrada." };
-    const canRead =
-      scope.isGlobal || scope.restaurantId === row.restaurantId;
+    const canRead = canAccessRestaurant(scope, row.restaurantId);
     if (!canRead) {
       return { ok: false, error: "No tienes permiso para ver esta solicitud." };
     }
@@ -35,9 +35,13 @@ export async function getMyRequestHistory(
     const history = await listRequestHistory(requestId);
     return { ok: true, history };
   } catch (error) {
-    if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
-      return { ok: false, error: error.message };
-    }
-    return { ok: false, error: "No se pudo consultar el historial." };
+    if (isNextRedirect(error)) throw error;
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "No se pudo consultar el historial.",
+    };
   }
 }

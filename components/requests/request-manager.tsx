@@ -41,6 +41,7 @@ import {
   ACTIVE_REQUEST_STATUS,
   CLOSED_REQUEST_STATUS,
   ALL_REQUEST_STATUS,
+  DESTINATION_AREA_LABELS,
   REQUEST_PRIORITY_LABELS,
   REQUEST_STATUS_LABELS,
   type RequestStatus,
@@ -261,12 +262,13 @@ return matchesTab && matchesRestaurant && matchesQuery;
                     sort={sort}
                     onToggle={toggle}
                   />
-                  <SortableHeader
+<SortableHeader
                     label="Solicitante"
                     sortKey="requester"
                     sort={sort}
                     onToggle={toggle}
                   />
+                  <th className="px-4 py-2 font-medium">Área</th>
                   <th className="px-4 py-2 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
@@ -274,7 +276,7 @@ return matchesTab && matchesRestaurant && matchesQuery;
                 {filtered.length === 0 && (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-4 py-8 text-center text-muted-foreground"
                     >
                       No hay solicitudes que coincidan.
@@ -314,8 +316,13 @@ return matchesTab && matchesRestaurant && matchesQuery;
                         {REQUEST_STATUS_LABELS[r.status] ?? r.status}
                       </Badge>
                     </td>
-                    <td className="px-4 py-2 text-muted-foreground">
+<td className="px-4 py-2 text-muted-foreground">
                       {r.requestedByName}
+                    </td>
+                    <td className="px-4 py-2 text-muted-foreground">
+                      {r.destinationArea
+                        ? DESTINATION_AREA_LABELS[r.destinationArea]
+                        : "Sin especificar"}
                     </td>
                     <td className="px-4 py-2 text-right">
                       {isManager && (

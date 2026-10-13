@@ -81,9 +81,9 @@ describe("invalidación de vistas del panel", () => {
     expect(result).toContain("/inventory");
   });
 
-  it("un usuario no invalida rutas que no dependen de usuarios", () => {
+  it("un usuario refresca la gestión de usuarios y la vista de técnicos", () => {
     revalidateUserViews();
-    expect(paths()).toEqual(["/users"]);
+    expect(paths()).toEqual(["/users", "/technicians"]);
   });
 
   it("nunca revalida la ruta pública del QR", () => {

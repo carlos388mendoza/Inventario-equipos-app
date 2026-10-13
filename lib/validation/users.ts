@@ -52,6 +52,11 @@ export const createUserSchema = z
       message: "Rol no válido",
     }),
     restaurantId: z.string().trim().min(1).nullable().optional(),
+    /**
+     * Restaurantes asignados a un usuario técnico (issues #11/#16). Solo aplica
+     * a TECHNICIAN / HEAD_TECHNICIAN; para el resto se ignora en el servidor.
+     */
+    restaurantIds: z.array(z.string().trim().min(1)).optional(),
     active: z.boolean().default(true),
   })
   .superRefine((data, ctx) => {
@@ -78,6 +83,7 @@ export const updateUserSchema = z
       message: "Rol no válido",
     }),
     restaurantId: z.string().trim().min(1).nullable().optional(),
+    restaurantIds: z.array(z.string().trim().min(1)).optional(),
     active: z.boolean(),
   })
   .superRefine((data, ctx) => {

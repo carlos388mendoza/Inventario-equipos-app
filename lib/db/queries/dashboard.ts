@@ -1,4 +1,4 @@
-import { asc, count, eq } from "drizzle-orm";
+import { asc, count, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { equipment, restaurants, securityLabels } from "@/lib/db/schema";
 import {
@@ -44,39 +44,65 @@ export interface DashboardSummary {
 }
 
 /**
- * Resumen del panel principal, filtrado al restaurante del usuario
- * cuando no es un rol global (defensa en profundidad en el servidor).
+ * Resumen del panel principal.
+ * `restaurantIds` es la lista de unidades permitidas (técnicos con varias
+ * asignaciones); `null` = alcance global. Una lista vacía = sin acceso a
+ * ninguna unidad (nunca se interpreta como "todas").
  */
 export async function getDashboardSummary(
-  restaurantId: string | null
+  restaurantIds: string[] | null
 ): Promise<DashboardSummary> {
-  const [equiposConTipo, requests, restaurantRows, labelsCountRow, restaurantsCountRow] =
-    await Promise.all([
-      equipmentWithType(),
-      listRequests(restaurantId ? { restaurantId } : undefined),
-      db
-        .select({
-          id: restaurants.id,
-          name: restaurants.name,
-          brand: restaurants.brand,
-          sector: restaurants.sector,
-          logo: restaurants.logo,
-        })
-        .from(restaurants)
-        .orderBy(asc(restaurants.name)),
-      db
-        .select({ total: count() })
-        .from(securityLabels)
-        .innerJoin(equipment, eq(securityLabels.equipmentId, equipment.id))
-        .where(restaurantId ? eq(equipment.restaurantId, restaurantId) : undefined),
-      restaurantId ? null : db.select({ total: count() }).from(restaurants),
-    ]);
+  const [equiposConTipo, requests, restaurantRows] = await Promise.all([
+    restaurantIds === null
+      ? equipmentWithType()
+      : restaurantIds.length > 0
+        ? equipmentWithType(restaurantIds)
+        : Promise.resolve([]),
+    listRequests(restaurantIds === null ? undefined : { restaurantIds }),
+    db
+      .select({
+        id: restaurants.id,
+        name: restaurants.name,
+        brand: restaurants.brand,
+        sector: restaurants.sector,
+        logo: restaurants.logo,
+      })
+      .from(restaurants)
+      .orderBy(asc(restaurants.name)),
+  ]);
+
+  let labelsTotal = 0;
+  if (restaurantIds === null) {
+    const [row] = await db
+      .select({ total: count() })
+      .from(securityLabels)
+      .innerJoin(equipment, eq(securityLabels.equipmentId, equipment.id));
+    labelsTotal = row?.total ?? 0;
+  } else if (restaurantIds.length > 0) {
+    const [row] = await db
+      .select({ total: count() })
+      .from(securityLabels)
+      .innerJoin(equipment, eq(securityLabels.equipmentId, equipment.id))
+      .where(inArray(equipment.restaurantId, restaurantIds));
+    labelsTotal = row?.total ?? 0;
+  }
+
+  let restaurantsTotal: number | null = null;
+  if (restaurantIds === null) {
+    const [row] = await db.select({ total: count() }).from(restaurants);
+    restaurantsTotal = row?.total ?? 0;
+  }
 
   const restaurantMap = new Map(restaurantRows.map((r) => [r.id, r]));
 
-  const scoped = restaurantId
-    ? equiposConTipo.filter((r) => r.equipment.restaurantId === restaurantId)
-    : equiposConTipo;
+  const scoped =
+    restaurantIds === null
+      ? equiposConTipo
+      : restaurantIds.length === 0
+        ? []
+        : equiposConTipo.filter((r) =>
+            restaurantIds.includes(r.equipment.restaurantId)
+          );
 
   const lifecycle: LifecycleCounts = { ok: 0, warning: 0, expired: 0, unknown: 0 };
   const atRisk: AtRiskEquipment[] = [];
@@ -116,13 +142,13 @@ export async function getDashboardSummary(
   ).length;
 
   return {
-    restaurantId,
-    restaurantsTotal:
-      restaurantsCountRow === null ? null : (restaurantsCountRow[0]?.total ?? 0),
+    restaurantId:
+      restaurantIds && restaurantIds.length === 1 ? restaurantIds[0] : null,
+    restaurantsTotal,
     equipmentTotal: scoped.length,
     activeRequests: activeCount,
     closedRequests: requests.length - activeCount,
-    labelsTotal: labelsCountRow[0]?.total ?? 0,
+    labelsTotal,
     lifecycle,
     atRisk,
     recentRequests: requests.slice(0, 5),

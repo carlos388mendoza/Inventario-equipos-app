@@ -47,7 +47,7 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm gap-4">
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">Iniciar sesión</CardTitle>
         <CardDescription>
@@ -99,7 +99,7 @@ export function LoginForm() {
             </p>
           )}
         </CardContent>
-        <CardFooter className="flex-col gap-3">
+        <CardFooter className="flex-col gap-2">
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Ingresando…" : "Ingresar"}
           </Button>

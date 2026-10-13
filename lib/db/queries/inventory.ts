@@ -1,8 +1,8 @@
-import { asc, and, eq, isNotNull } from "drizzle-orm";
+import { asc, and, inArray, isNotNull } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { equipment, equipmentGroups, equipmentTypes, restaurants } from "@/lib/db/schema";
 import { INVENTORY_FORMAT, type InventoryFormat } from "@/lib/db/enums";
-import type { AccessScope } from "@/lib/equipment/scope";
+import { type AccessScope } from "@/lib/equipment/scope";
 
 /** Fila de un documento con un equipo por unidad (formato PH01). */
 export interface InventoryAssetRow {
@@ -71,22 +71,28 @@ export async function getInventory(scope: AccessScope): Promise<InventoryData> {
 
   const assetRows = scope.isGlobal
     ? await db.select().from(equipment).orderBy(asc(equipment.assetCode))
-    : await db
-        .select()
-        .from(equipment)
-        .where(eq(equipment.restaurantId, scope.restaurantId!))
-        .orderBy(asc(equipment.assetCode));
+    : scope.assignedRestaurantIds.length === 0
+      ? []
+      : await db
+          .select()
+          .from(equipment)
+          .where(inArray(equipment.restaurantId, scope.assignedRestaurantIds))
+          .orderBy(asc(equipment.assetCode));
 
   const groupRows = scope.isGlobal
     ? await db
         .select()
         .from(equipmentGroups)
         .orderBy(asc(equipmentGroups.sourceDocument), asc(equipmentGroups.name))
-    : await db
-        .select()
-        .from(equipmentGroups)
-        .where(eq(equipmentGroups.restaurantId, scope.restaurantId!))
-        .orderBy(asc(equipmentGroups.sourceDocument), asc(equipmentGroups.name));
+    : scope.assignedRestaurantIds.length === 0
+      ? []
+      : await db
+          .select()
+          .from(equipmentGroups)
+          .where(
+            inArray(equipmentGroups.restaurantId, scope.assignedRestaurantIds)
+          )
+          .orderBy(asc(equipmentGroups.sourceDocument), asc(equipmentGroups.name));
 
   const assets: InventoryAssetRow[] = assetRows.map((e) => {
     const restaurant = restaurantMap.get(e.restaurantId);
@@ -152,9 +158,16 @@ export async function countDocumentedEquipment(scope: AccessScope): Promise<numb
   const documented = isNotNull(equipment.sourceDocument);
   const rows = scope.isGlobal
     ? await db.select({ id: equipment.id }).from(equipment).where(documented)
-    : await db
-        .select({ id: equipment.id })
-        .from(equipment)
-        .where(and(eq(equipment.restaurantId, scope.restaurantId!), documented));
+    : scope.assignedRestaurantIds.length === 0
+      ? []
+      : await db
+          .select({ id: equipment.id })
+          .from(equipment)
+          .where(
+            and(
+              inArray(equipment.restaurantId, scope.assignedRestaurantIds),
+              documented
+            )
+          );
   return rows.length;
 }

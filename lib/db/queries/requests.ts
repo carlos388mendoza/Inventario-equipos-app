@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   equipment,
@@ -8,7 +8,14 @@ import {
   restaurants,
   userTable,
 } from "@/lib/db/schema";
-import type { RequestPriority, RequestStatus } from "@/lib/db/enums";
+import {
+  asUserRole,
+  isTechnicianRole,
+  type DestinationArea,
+  type RequestInstallationStatus,
+  type RequestPriority,
+  type RequestStatus,
+} from "@/lib/db/enums";
 
 export interface RequestWithNames {
   id: string;
@@ -23,20 +30,38 @@ export interface RequestWithNames {
   equipmentTypeName: string;
   currentEquipmentId: string | null;
   currentEquipmentAssetCode: string | null;
+  destinationArea: DestinationArea | null;
   reason: string;
   description: string | null;
   priority: RequestPriority;
   status: RequestStatus;
+  installationStatus: RequestInstallationStatus;
+  followUpDueAt: Date | null;
+  followUpSentAt: Date | null;
+  installationConfirmedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-/** Consulta solicitudes con nombres desnormalizados (restaurante, tipo, usuario, equipo actual). */
+/**
+ * Consulta solicitudes con nombres desnormalizados (restaurante, tipo, usuario,
+ * equipo actual).
+ * - `restaurantId` filtra por una sola unidad.
+ * - `restaurantIds` filtra por varias (técnicos con asignaciones múltiples).
+ *   Una lista vacía devuelve cero filas: nunca se interpreta como "todas".
+ */
 export async function listRequests(params?: {
   restaurantId?: string;
+  restaurantIds?: string[];
   status?: RequestStatus;
 }): Promise<RequestWithNames[]> {
   const conditions = [];
+  if (params?.restaurantIds !== undefined) {
+    if (params.restaurantIds.length === 0) return [];
+    conditions.push(
+      inArray(equipmentRequests.restaurantId, params.restaurantIds)
+    );
+  }
   if (params?.restaurantId) {
     conditions.push(eq(equipmentRequests.restaurantId, params.restaurantId));
   }
@@ -82,10 +107,15 @@ export async function listRequests(params?: {
     equipmentTypeName: names.equipmentTypeName,
     currentEquipmentId: request.currentEquipmentId,
     currentEquipmentAssetCode: names.currentEquipmentAssetCode ?? null,
+    destinationArea: request.destinationArea ?? null,
     reason: request.reason,
     description: request.description,
     priority: request.priority,
     status: request.status,
+    installationStatus: request.installationStatus,
+    followUpDueAt: request.followUpDueAt ?? null,
+    followUpSentAt: request.followUpSentAt ?? null,
+    installationConfirmedAt: request.installationConfirmedAt ?? null,
     createdAt: request.createdAt,
     updatedAt: request.updatedAt,
   }));
@@ -119,4 +149,30 @@ export async function listRequestHistory(
     .leftJoin(userTable, eq(requestHistory.userId, userTable.id))
     .where(eq(requestHistory.requestId, requestId))
     .orderBy(desc(requestHistory.createdAt));
+}
+
+/**
+ * Técnico que solicitó el reemplazo de un equipo (issue #12).
+ *
+ * Solo se devuelve cuando existe un vínculo DIRECTO y fiable: una solicitud de
+ * reemplazo cuyo `currentEquipmentId` es ese equipo y cuyo solicitante tiene un
+ * rol técnico. Se devuelve únicamente el nombre; nunca el correo ni datos de la
+ * solicitud. Si el solicitante fuera un `RESTAURANT_USER`, no se expone nada.
+ */
+export async function getEquipmentRequesterTechnician(
+  equipmentId: string
+): Promise<{ name: string } | null> {
+  const rows = await db
+    .select({ name: userTable.name, role: userTable.role })
+    .from(equipmentRequests)
+    .innerJoin(userTable, eq(equipmentRequests.requestedBy, userTable.id))
+    .where(eq(equipmentRequests.currentEquipmentId, equipmentId))
+    .orderBy(desc(equipmentRequests.createdAt));
+
+  for (const row of rows) {
+    if (isTechnicianRole(asUserRole(row.role))) {
+      return { name: row.name };
+    }
+  }
+  return null;
 }

@@ -77,9 +77,13 @@ export function revalidateRestaurantViews(): void {
   revalidatePath("/dashboard");
 }
 
-/** Usuarios: la gestión de usuarios no alimenta contadores del panel. */
+/**
+ * Usuarios: la gestión de usuarios no alimenta contadores del panel. La vista
+ * de `/technicians` muestra las asignaciones, así que también se revalida.
+ */
 export function revalidateUserViews(): void {
   revalidatePath("/users");
+  revalidatePath("/technicians");
 }
 
 /**

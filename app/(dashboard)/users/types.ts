@@ -6,6 +6,8 @@ export interface UserDto {
   active: boolean;
   restaurantId: string | null;
   restaurantName: string | null;
+  /** Restaurantes asignados a un técnico (issues #11/#16). */
+  assignedRestaurantIds: string[];
   createdAt: Date;
   updatedAt: Date;
 }

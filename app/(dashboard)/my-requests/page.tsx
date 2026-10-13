@@ -5,7 +5,6 @@ import { resolveScope } from "@/lib/equipment/scope";
 import { listRequests } from "@/lib/db/queries/requests";
 import { db } from "@/lib/db";
 import { restaurants } from "@/lib/db/schema";
-import { ROLES } from "@/lib/db/enums";
 import { MyRequestsManager } from "@/components/requests/my-requests-manager";
 import type { RequestDto } from "@/app/(dashboard)/requests/types";
 
@@ -13,7 +12,10 @@ export const dynamic = "force-dynamic";
 
 export default async function MyRequestsPage() {
   const user = await requireUser();
-  if (user.role !== ROLES.RESTAURANT_USER && !user.restaurantId) {
+  // Todos los roles sin restaurante (y los RESTAURANT_USER sin unidad, por si
+  // un registro quedara huérfano) salen de aquí: evita listar solicitudes sin
+  // filtro alguno.
+  if (!user.restaurantId) {
     redirect("/requests");
   }
   const scope = await resolveScope();
@@ -35,10 +37,15 @@ export default async function MyRequestsPage() {
     equipmentTypeName: r.equipmentTypeName,
     currentEquipmentId: r.currentEquipmentId,
     currentEquipmentAssetCode: r.currentEquipmentAssetCode,
+    destinationArea: r.destinationArea,
     reason: r.reason,
     description: r.description,
     priority: r.priority,
     status: r.status,
+    installationStatus: r.installationStatus,
+    followUpDueAt: r.followUpDueAt,
+    followUpSentAt: r.followUpSentAt,
+    installationConfirmedAt: r.installationConfirmedAt,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   }));

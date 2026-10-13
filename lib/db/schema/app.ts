@@ -11,11 +11,17 @@ import { userTable } from "@/lib/db/schema/auth";
 import {
   EQUIPMENT_STATUS,
   INVENTORY_FORMAT,
+  REQUEST_INSTALLATION_STATUS,
+  REQUEST_NOTIFICATION_STATUS,
   REQUEST_PRIORITY,
   REQUEST_STATUS,
+  type DestinationArea,
   type EquipmentMovementType,
   type EquipmentStatus,
   type InventoryFormat,
+  type RequestInstallationStatus,
+  type RequestNotificationStatus,
+  type RequestNotificationType,
   type RequestPriority,
   type RequestStatus,
 } from "@/lib/db/enums";
@@ -212,6 +218,13 @@ export const equipmentRequests = sqliteTable(
     ),
     reason: text("reason").notNull(),
     description: text("description"),
+    /**
+     * Área física donde se instalará el equipo dentro del restaurante
+     * (cocina, counter, etc.). Es distinto de `restaurantId` (unidad de
+     * destino) y de la ubicación actual del equipo. Nullable para conservar las
+     * solicitudes creadas antes de este campo (issue #14).
+     */
+    destinationArea: text("destination_area").$type<DestinationArea>(),
     priority: text("priority")
       .$type<RequestPriority>()
       .notNull()
@@ -220,6 +233,22 @@ export const equipmentRequests = sqliteTable(
       .$type<RequestStatus>()
       .notNull()
       .default(REQUEST_STATUS.PENDING),
+    /**
+     * Seguimiento de la instalación (issue #13). Independiente del `status`:
+     * aprobar una solicitud NO la marca como instalada.
+     */
+    installationStatus: text("installation_status")
+      .$type<RequestInstallationStatus>()
+      .notNull()
+      .default(REQUEST_INSTALLATION_STATUS.PENDING),
+    /** Fecha en la que corresponde el correo de seguimiento (aprobación + 5 días). */
+    followUpDueAt: integer("follow_up_due_at", { mode: "timestamp_ms" }),
+    /** Fecha en la que YA se envió el seguimiento (evita duplicados). */
+    followUpSentAt: integer("follow_up_sent_at", { mode: "timestamp_ms" }),
+    /** Fecha de confirmación de instalación por parte de la unidad. */
+    installationConfirmedAt: integer("installation_confirmed_at", {
+      mode: "timestamp_ms",
+    }),
     createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
     updatedAt: integer("updatedAt", { mode: "timestamp_ms" }).notNull(),
   },
@@ -230,6 +259,8 @@ export const equipmentRequests = sqliteTable(
     index("requests_status_idx").on(table.status),
     index("requests_priority_idx").on(table.priority),
     index("requests_created_at_idx").on(table.createdAt),
+    index("requests_installation_status_idx").on(table.installationStatus),
+    index("requests_follow_up_due_idx").on(table.followUpDueAt),
   ]
 );
 
@@ -360,6 +391,101 @@ export const securityLabels = sqliteTable(
   ]
 );
 
+/**
+ * Asignación de un restaurante a un usuario técnico (issues #11 y #16).
+ *
+ * Un `RESTAURANT_USER` sigue atado a un único `user.restaurantId`. Un técnico,
+ * en cambio, puede registrar solicitudes en nombre de VARIOS restaurantes, y
+ * esa relación de muchos-a-muchos vive aquí. Una asignación por par
+ * (usuario, restaurante); el índice único impide duplicados.
+ */
+export const userRestaurantAssignments = sqliteTable(
+  "user_restaurant_assignments",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => userTable.id, { onDelete: "cascade" }),
+    restaurantId: text("restaurant_id")
+      .notNull()
+      .references(() => restaurants.id, { onDelete: "cascade" }),
+    createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("user_restaurant_assignments_unique").on(
+      table.userId,
+      table.restaurantId
+    ),
+    index("user_restaurant_assignments_user_idx").on(table.userId),
+    index("user_restaurant_assignments_restaurant_idx").on(
+      table.restaurantId
+    ),
+  ]
+);
+
+/**
+ * Bandeja de salida de notificaciones de solicitudes (issue #13).
+ *
+ * Cada correo que el flujo necesita enviar se registra aquí ANTES de intentar
+ * el envío. Así queda auditoría de qué se debía notificar, a quién y con qué
+ * resultado, y los tipos de un solo envío no se duplican (se comprueba antes
+ * de insertar). Estados: PENDING → SENT / SKIPPED (sin proveedor) / FAILED.
+ */
+export const requestNotifications = sqliteTable(
+  "request_notifications",
+  {
+    id: text("id").primaryKey(),
+    requestId: text("request_id")
+      .notNull()
+      .references(() => equipmentRequests.id, { onDelete: "cascade" }),
+    type: text("type").$type<RequestNotificationType>().notNull(),
+    channel: text("channel").notNull().default("email"),
+    recipient: text("recipient").notNull(),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    status: text("status")
+      .$type<RequestNotificationStatus>()
+      .notNull()
+      .default(REQUEST_NOTIFICATION_STATUS.PENDING),
+    /** Proveedor usado ("resend", "none") y error si lo hubo. */
+    provider: text("provider"),
+    error: text("error"),
+    createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
+    sentAt: integer("sentAt", { mode: "timestamp_ms" }),
+  },
+  (table) => [
+    index("request_notifications_request_idx").on(table.requestId),
+    index("request_notifications_type_idx").on(table.type),
+    index("request_notifications_status_idx").on(table.status),
+  ]
+);
+
+/**
+ * Token opaco de confirmación de instalación (issue #13).
+ *
+ * Se limita a UNA solicitud, es de un solo uso (`usedAt`) y caduca
+ * (`expiresAt`). Quien tenga el enlace solo puede confirmar ESA solicitud, y el
+ * token no se puede deducir de la solicitud.
+ */
+export const requestConfirmationTokens = sqliteTable(
+  "request_confirmation_tokens",
+  {
+    id: text("id").primaryKey(),
+    requestId: text("request_id")
+      .notNull()
+      .references(() => equipmentRequests.id, { onDelete: "cascade" }),
+    token: text("token").notNull(),
+    purpose: text("purpose").notNull().default("INSTALLATION_FOLLOWUP"),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    usedAt: integer("used_at", { mode: "timestamp_ms" }),
+    createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("request_confirmation_tokens_token_unique").on(table.token),
+    index("request_confirmation_tokens_request_idx").on(table.requestId),
+  ]
+);
+
 // ─── Relaciones ─────────────────────────────────────────────────────────────
 
 export const restaurantsRelations = relations(restaurants, ({ many }) => ({
@@ -450,6 +576,8 @@ export const equipmentRequestsRelations = relations(
       references: [equipment.id],
     }),
     history: many(requestHistory),
+    notifications: many(requestNotifications),
+    confirmationTokens: many(requestConfirmationTokens),
   })
 );
 
@@ -523,6 +651,40 @@ export const securityLabelsRelations = relations(securityLabels, ({ one }) => ({
   }),
 }));
 
+export const userRestaurantAssignmentsRelations = relations(
+  userRestaurantAssignments,
+  ({ one }) => ({
+    user: one(userTable, {
+      fields: [userRestaurantAssignments.userId],
+      references: [userTable.id],
+    }),
+    restaurant: one(restaurants, {
+      fields: [userRestaurantAssignments.restaurantId],
+      references: [restaurants.id],
+    }),
+  })
+);
+
+export const requestNotificationsRelations = relations(
+  requestNotifications,
+  ({ one }) => ({
+    request: one(equipmentRequests, {
+      fields: [requestNotifications.requestId],
+      references: [equipmentRequests.id],
+    }),
+  })
+);
+
+export const requestConfirmationTokensRelations = relations(
+  requestConfirmationTokens,
+  ({ one }) => ({
+    request: one(equipmentRequests, {
+      fields: [requestConfirmationTokens.requestId],
+      references: [equipmentRequests.id],
+    }),
+  })
+);
+
 export const userRelations = relations(userTable, ({ one, many }) => ({
   restaurant: one(restaurants, {
     fields: [userTable.restaurantId],
@@ -531,4 +693,5 @@ export const userRelations = relations(userTable, ({ one, many }) => ({
   requests: many(equipmentRequests),
   requestHistory: many(requestHistory),
   equipmentHistory: many(equipmentHistory),
+  restaurantAssignments: many(userRestaurantAssignments),
 }));

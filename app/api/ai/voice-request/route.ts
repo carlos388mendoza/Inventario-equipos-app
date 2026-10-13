@@ -11,7 +11,7 @@ import { db } from "@/lib/db";
 import { equipment, equipmentTypes } from "@/lib/db/schema";
 import { REQUEST_KINDS, requestInputSchema } from "@/lib/validation/requests";
 import { ALL_REQUEST_PRIORITY } from "@/lib/db/enums";
-import { ROLES } from "@/lib/db/enums";
+import { ROLES, isTechnicianRole } from "@/lib/db/enums";
 import { getOpenRouterModel } from "@/lib/ai/openrouter";
 import { asc, eq } from "drizzle-orm";
 
@@ -44,7 +44,9 @@ export async function POST(req: Request) {
   await requireRole(
     ROLES.ADMIN,
     ROLES.IT_MANAGER,
-    ROLES.RESTAURANT_USER
+    ROLES.RESTAURANT_USER,
+    ROLES.TECHNICIAN,
+    ROLES.HEAD_TECHNICIAN
   );
   const scope = await resolveScope();
 
@@ -59,15 +61,21 @@ export async function POST(req: Request) {
   const text = parsed.data.text;
 
   let targetRestaurantId = scope.restaurantId;
-  if (scope.isGlobal) {
-    if (!parsed.data.restaurantId) {
+  if (scope.isGlobal || isTechnicianRole(scope.role)) {
+    // Técnico con un solo restaurante asignado: se usa ese por defecto.
+    const defaultRestaurantId =
+      isTechnicianRole(scope.role) && scope.assignedRestaurantIds.length === 1
+        ? scope.assignedRestaurantIds[0]
+        : undefined;
+    const requestedId = parsed.data.restaurantId || defaultRestaurantId;
+    if (!requestedId) {
       return NextResponse.json(
         { ok: false, error: "Selecciona el restaurante de la solicitud." },
         { status: 400 }
       );
     }
-    requireRestaurantAccessFor(scope, parsed.data.restaurantId);
-    targetRestaurantId = parsed.data.restaurantId;
+    requireRestaurantAccessFor(scope, requestedId);
+    targetRestaurantId = requestedId;
   }
   if (!targetRestaurantId) {
     return NextResponse.json(

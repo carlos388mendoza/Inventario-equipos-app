@@ -33,13 +33,25 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/dashboard",
     label: "Panel",
     icon: LayoutDashboard,
-    roles: [ROLES.ADMIN, ROLES.IT_MANAGER, ROLES.RESTAURANT_USER],
+    roles: [
+      ROLES.ADMIN,
+      ROLES.IT_MANAGER,
+      ROLES.RESTAURANT_USER,
+      ROLES.TECHNICIAN,
+      ROLES.HEAD_TECHNICIAN,
+    ],
   },
   {
     href: "/equipment",
     label: "Inventario",
     icon: PackageSearch,
-    roles: [ROLES.ADMIN, ROLES.IT_MANAGER, ROLES.RESTAURANT_USER],
+    roles: [
+      ROLES.ADMIN,
+      ROLES.IT_MANAGER,
+      ROLES.RESTAURANT_USER,
+      ROLES.TECHNICIAN,
+      ROLES.HEAD_TECHNICIAN,
+    ],
   },
   {
     // Vista de los documentos de inventario de origen. Es aditiva: convive con
@@ -47,7 +59,13 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/inventory",
     label: "Inventario por documento",
     icon: FileSpreadsheet,
-    roles: [ROLES.ADMIN, ROLES.IT_MANAGER, ROLES.RESTAURANT_USER],
+    roles: [
+      ROLES.ADMIN,
+      ROLES.IT_MANAGER,
+      ROLES.RESTAURANT_USER,
+      ROLES.TECHNICIAN,
+      ROLES.HEAD_TECHNICIAN,
+    ],
   },
   {
     // Traslado, copia, jalado, préstamo, devolución, sustitución y el libro de
@@ -62,12 +80,25 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/requests",
     label: "Solicitudes",
     icon: ClipboardList,
-    roles: [ROLES.ADMIN, ROLES.IT_MANAGER, ROLES.RESTAURANT_USER],
-  },  {
+    roles: [
+      ROLES.ADMIN,
+      ROLES.IT_MANAGER,
+      ROLES.RESTAURANT_USER,
+      ROLES.TECHNICIAN,
+      ROLES.HEAD_TECHNICIAN,
+    ],
+  },
+  {
     href: "/my-requests",
     label: "Mis solicitudes",
     icon: ReceiptText,
     roles: [ROLES.RESTAURANT_USER],
+  },
+  {
+    href: "/technicians",
+    label: "Técnicos",
+    icon: Users,
+    roles: [ROLES.ADMIN, ROLES.HEAD_TECHNICIAN],
   },
   {
     href: "/statistics",

@@ -5,6 +5,7 @@ import {
   desc,
   eq,
   gte,
+  inArray,
   isNotNull,
   lt,
 } from "drizzle-orm";
@@ -119,8 +120,15 @@ export async function requestsRankingByRestaurant() {
  * Inventario completo con el tipo de equipo y su vida útil de catálogo.
  * La vida útil real se compara después con la antigüedad del equipo
  * (installationDate ?? purchaseDate) para detectar equipos vencidos.
+ *
+ * `restaurantIds` opcional: limita la consulta a esos restaurantes (el panel
+ * de un técnico con varias asignaciones solo necesita SU inventario, no el
+ * global). Si se omite, devuelve el inventario completo.
  */
-export async function equipmentWithType() {
+export async function equipmentWithType(restaurantIds?: string[]) {
+  const conditions = restaurantIds
+    ? [inArray(equipment.restaurantId, restaurantIds)]
+    : [];
   return db
     .select({
       equipment: equipment,
@@ -133,6 +141,7 @@ export async function equipmentWithType() {
       equipmentTypes,
       eq(equipment.equipmentTypeId, equipmentTypes.id)
     )
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(asc(equipmentTypes.name), asc(equipment.assetCode));
 }
 

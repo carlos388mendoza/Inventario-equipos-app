@@ -28,6 +28,7 @@ export default async function UsersPage() {
     active: u.active,
     restaurantId: u.restaurantId ?? null,
     restaurantName: u.restaurantName ?? null,
+    assignedRestaurantIds: u.assignedRestaurantIds,
     createdAt: u.createdAt,
     updatedAt: u.updatedAt,
   }));

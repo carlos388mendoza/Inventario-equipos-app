@@ -9,6 +9,7 @@ import {
   securityLabels,
 } from "@/lib/db/schema";
 import { EQUIPMENT_STATUS_LABELS } from "@/lib/db/enums";
+import { getEquipmentRequesterTechnician } from "@/lib/db/queries/requests";
 import { Badge } from "@/components/ui/badge";
 import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import {
@@ -40,6 +41,7 @@ export default async function PublicEquipmentPage({
 
   const rows = await db
     .select({
+      id: equipment.id,
       assetCode: equipment.assetCode,
       status: equipment.status,
       brand: equipment.brand,
@@ -59,11 +61,15 @@ export default async function PublicEquipmentPage({
       eq(equipment.equipmentTypeId, equipmentTypes.id)
     )
     .innerJoin(restaurants, eq(equipment.restaurantId, restaurants.id))
-    .where(eq(securityLabels.token, token))
-    .limit(1);
+.where(eq(securityLabels.token, token))
+      .limit(1);
 
   if (rows.length === 0) notFound();
   const row = rows[0];
+
+  // Issue #12: solo si existe una solicitud de REEMPLAZO enlazada a este equipo
+  // y fue creada por un técnico, se muestra su nombre (nunca su correo).
+  const technician = await getEquipmentRequesterTechnician(row.id);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
@@ -106,6 +112,14 @@ export default async function PublicEquipmentPage({
               <dt className="text-muted-foreground">Fecha de instalación</dt>
               <dd>{formatDate(row.installationDate)}</dd>
             </div>
+            {technician && (
+              <div>
+                <dt className="text-muted-foreground">
+                  Técnico responsable del reemplazo
+                </dt>
+                <dd>{technician.name}</dd>
+              </div>
+            )}
           </dl>
           <div className="flex justify-center">
             <Badge variant="secondary">

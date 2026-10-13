@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   ACTIVE_REQUEST_STATUS,
   CLOSED_REQUEST_STATUS,
+  DESTINATION_AREA_LABELS,
   REQUEST_PRIORITY_LABELS,
   REQUEST_STATUS_LABELS,
   type RequestStatus,
@@ -183,6 +184,7 @@ export function MyRequestsManager({
                   sort={sort}
                   onToggle={toggle}
                 />
+                <th className="px-4 py-2 font-medium">Área</th>
                 <SortableHeader
                   label="Motivo"
                   sortKey="reason"
@@ -196,7 +198,7 @@ export function MyRequestsManager({
               {shown.length === 0 && (
                 <tr>
                   <td
-                    colSpan={6}
+                    colSpan={7}
                     className="px-4 py-8 text-center text-muted-foreground"
                   >
                     No hay solicitudes{" "}
@@ -224,6 +226,11 @@ export function MyRequestsManager({
                     <Badge variant={statusBadgeVariant(r.status)}>
                       {REQUEST_STATUS_LABELS[r.status] ?? r.status}
                     </Badge>
+                  </td>
+                  <td className="px-4 py-2 text-muted-foreground">
+                    {r.destinationArea
+                      ? DESTINATION_AREA_LABELS[r.destinationArea]
+                      : "Sin especificar"}
                   </td>
                   <td className="max-w-[260px] truncate px-4 py-2 text-muted-foreground">
                     {r.reason}

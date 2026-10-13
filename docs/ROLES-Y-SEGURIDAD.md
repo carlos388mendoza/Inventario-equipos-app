@@ -51,6 +51,22 @@ export const ROLES = {
 | Gestionar usuarios | ✅ | ❌ | ❌ |
 | Ajustes del dispositivo | ✅ | ✅ | ✅ |
 
+### 2.1 Gestión de técnicos (decisión)
+
+La página `/technicians` y la acción `setTechnicianAssignmentsAction`
+(`app/(dashboard)/users/actions.ts`) exigen **`ADMIN` o `HEAD_TECHNICIAN`**:
+`requireRole(ROLES.ADMIN, ROLES.HEAD_TECHNICIAN)` se ejecuta **antes** de
+cualquier consulta, de modo que un rol no autorizado (`IT_MANAGER`,
+`TECHNICIAN`, `RESTAURANT_USER`) recibe una redirección **sin tocar la base de
+datos**. La navegación (`lib/navigation.ts`) limita la entrada a los mismos dos
+roles.
+
+**`IT_MANAGER` se queda fuera a propósito.** Administra inventario, solicitudes,
+movimientos y etiquetas, pero no usuarios ni restaurantes, y tampoco la
+asignación de técnicos. No existe un requisito explícito de que deba gestionarla,
+así que se conserva el comportamiento actual (la opción segura: no ampliar
+permisos sin necesidad).
+
 ---
 
 ## 3. Tres capas, y la última es la que importa

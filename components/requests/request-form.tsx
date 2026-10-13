@@ -10,7 +10,12 @@ import {
   REQUEST_KIND_LABELS,
   type RequestKind,
 } from "@/lib/validation/requests";
-import { ALL_REQUEST_PRIORITY, REQUEST_PRIORITY_LABELS } from "@/lib/db/enums";
+import {
+  ALL_DESTINATION_AREAS,
+  ALL_REQUEST_PRIORITY,
+  DESTINATION_AREA_LABELS,
+  REQUEST_PRIORITY_LABELS,
+} from "@/lib/db/enums";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,11 +76,9 @@ function getSpeechRecognition(): SpeechRecognitionConstructor | null {
 
 function VoiceRequestPanel({
   restaurantId,
-  restaurantLocked,
   onPrefill,
 }: {
   restaurantId: string;
-  restaurantLocked: boolean;
   onPrefill: (draft: VoiceDraft) => void;
 }) {
   const [transcript, setTranscript] = React.useState("");
@@ -132,7 +135,9 @@ function VoiceRequestPanel({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: transcript,
-          restaurantId: restaurantLocked ? undefined : restaurantId || undefined,
+          // Cuando el restaurante está bloqueado, `restaurantId` del estado ya
+          // contiene la única unidad posible: se envía tal cual.
+          restaurantId: restaurantId || undefined,
         }),
       });
       const data = (await res.json()) as
@@ -213,6 +218,7 @@ export function RequestForm({
   const [kind, setKind] = React.useState<RequestKind>("purchase");
   const [currentEquipmentId, setCurrentEquipmentId] = React.useState("");
   const [priority, setPriority] = React.useState("NORMAL");
+  const [destinationArea, setDestinationArea] = React.useState("");
   const [reason, setReason] = React.useState("");
   const [description, setDescription] = React.useState("");
 
@@ -230,6 +236,7 @@ export function RequestForm({
     setKind("purchase");
     setCurrentEquipmentId("");
     setPriority("NORMAL");
+    setDestinationArea("");
     setReason("");
     setDescription("");
   }
@@ -252,9 +259,10 @@ export function RequestForm({
         priority,
         kind,
         currentEquipmentId: currentEquipmentId || "",
+        destinationArea: destinationArea || "",
         reason,
         description,
-        restaurantId: restaurantLocked ? "" : restaurantId,
+        restaurantId: restaurantLocked ? currentRestaurantId ?? "" : restaurantId,
       });
       if (!result.ok) {
         toast.error(result.error ?? "No se pudo crear la solicitud.");
@@ -270,7 +278,6 @@ export function RequestForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <VoiceRequestPanel
         restaurantId={restaurantId}
-        restaurantLocked={restaurantLocked}
         onPrefill={applyDraft}
       />
 
@@ -345,6 +352,25 @@ export function RequestForm({
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label>Área de destino</Label>
+          <Select value={destinationArea} onValueChange={setDestinationArea}>
+            <SelectTrigger>
+              <SelectValue placeholder="Sin especificar" />
+            </SelectTrigger>
+            <SelectContent>
+              {ALL_DESTINATION_AREAS.map((area) => (
+                <SelectItem key={area} value={area}>
+                  {DESTINATION_AREA_LABELS[area]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Dónde se instalará el equipo dentro del restaurante.
+          </p>
         </div>
 
         {kind === "replacement" && (

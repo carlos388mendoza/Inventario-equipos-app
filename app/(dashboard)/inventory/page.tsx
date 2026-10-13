@@ -14,7 +14,9 @@ export default async function InventoryPage() {
   const user = await requireRole(
     ROLES.ADMIN,
     ROLES.IT_MANAGER,
-    ROLES.RESTAURANT_USER
+    ROLES.RESTAURANT_USER,
+    ROLES.TECHNICIAN,
+    ROLES.HEAD_TECHNICIAN
   );
   const scope = await resolveScope();
 

@@ -36,7 +36,12 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { SortableHeader, useTableSort } from "@/components/ui/sortable";
-import { ROLES, ROLE_LABELS } from "@/lib/db/enums";
+import {
+  ROLES,
+  ROLE_LABELS,
+  asUserRole,
+  isTechnicianRole,
+} from "@/lib/db/enums";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
 
 const ROLE_OPTIONS = Object.values(ROLES) as (keyof typeof ROLE_LABELS)[];
@@ -47,6 +52,7 @@ interface FormState {
   password: string;
   role: string;
   restaurantId: string;
+  restaurantIds: string[];
   active: boolean;
 }
 
@@ -56,6 +62,7 @@ const EMPTY_FORM: FormState = {
   password: "",
   role: ROLES.RESTAURANT_USER,
   restaurantId: "",
+  restaurantIds: [],
   active: true,
 };
 
@@ -72,6 +79,10 @@ const [query, setQuery] = React.useState("");
   const [editing, setEditing] = React.useState<UserDto | null>(null);
   const [form, setForm] = React.useState<FormState>(EMPTY_FORM);
   const { sort, toggle, sortRows } = useTableSort();
+  const restaurantNameById = React.useMemo(
+    () => new Map(restaurants.map((r) => [r.id, r.name])),
+    [restaurants]
+  );
 
   const [submitting, startSubmit] = useTransition();
   const { refreshAndBroadcast } = useMutationSync();
@@ -90,6 +101,7 @@ const [query, setQuery] = React.useState("");
       password: "",
       role: user.role,
       restaurantId: user.restaurantId ?? "",
+      restaurantIds: user.assignedRestaurantIds ?? [],
       active: user.active,
     });
     setDialogOpen(true);
@@ -103,6 +115,7 @@ const [query, setQuery] = React.useState("");
         email: form.email,
         role: form.role,
         restaurantId: form.restaurantId || null,
+        restaurantIds: form.restaurantIds,
         active: form.active,
         ...(editing ? { id: editing.id } : { password: form.password }),
       };
@@ -179,6 +192,16 @@ const counts = {
   // El rol de restaurante queda atado a un restaurante (regla del servidor).
   // La UI lo refleja: sin restaurante no se permite guardar.
   const restaurantRequired = form.role === ROLES.RESTAURANT_USER;
+  const technicianRole = isTechnicianRole(asUserRole(form.role));
+
+  function toggleAssignment(restaurantId: string) {
+    setForm((f) => ({
+      ...f,
+      restaurantIds: f.restaurantIds.includes(restaurantId)
+        ? f.restaurantIds.filter((id) => id !== restaurantId)
+        : [...f.restaurantIds, restaurantId],
+    }));
+  }
 
   return (
     <div className="space-y-4">
@@ -280,7 +303,13 @@ const counts = {
                       </Badge>
                     </td>
                     <td className="px-4 py-2 text-muted-foreground">
-                      {u.restaurantName ?? "—"}
+                      {isTechnicianRole(asUserRole(u.role))
+                        ? u.assignedRestaurantIds.length > 0
+                          ? u.assignedRestaurantIds
+                              .map((id) => restaurantNameById.get(id) ?? id)
+                              .join(", ")
+                          : "Sin asignar"
+                        : u.restaurantName ?? "—"}
                     </td>
                     <td className="px-4 py-2">
                       <Badge variant={u.active ? "default" : "secondary"}>
@@ -389,35 +418,66 @@ const counts = {
             </div>
 <div className="space-y-2">
               <Label>Restaurante</Label>
-              <Select
-                value={form.restaurantId}
-                onValueChange={(value) =>
-                  setForm((f) => ({ ...f, restaurantId: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      restaurantRequired ? "Selecciona un restaurante" : "Sin restaurante"
+              {technicianRole ? (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    Marca los restaurantes que este técnico puede atender.
+                  </p>
+                  <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2">
+                    {restaurants.length === 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        No hay restaurantes activos.
+                      </p>
+                    )}
+                    {restaurants.map((r) => (
+                      <label
+                        key={r.id}
+                        className="flex items-center gap-2 text-sm"
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={form.restaurantIds.includes(r.id)}
+                          onChange={() => toggleAssignment(r.id)}
+                        />
+                        {r.name}
+                      </label>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Select
+                    value={form.restaurantId}
+                    onValueChange={(value) =>
+                      setForm((f) => ({ ...f, restaurantId: value }))
                     }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {!restaurantRequired && (
-                    <SelectItem value="">Sin restaurante</SelectItem>
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          restaurantRequired ? "Selecciona un restaurante" : "Sin restaurante"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {!restaurantRequired && (
+                        <SelectItem value="">Sin restaurante</SelectItem>
+                      )}
+                      {restaurants.map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {restaurantRequired && (
+                    <p className="text-xs text-muted-foreground">
+                      Requerido para el rol de restaurante: sin él no podrá crear
+                      solicitudes.
+                    </p>
                   )}
-                  {restaurants.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {restaurantRequired && (
-                <p className="text-xs text-muted-foreground">
-                  Requerido para el rol de restaurante: sin él no podrá crear
-                  solicitudes.
-                </p>
+                </>
               )}
             </div>
             <div className="flex items-center gap-2">

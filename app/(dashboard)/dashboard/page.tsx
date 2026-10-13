@@ -9,13 +9,14 @@ import {
 } from "lucide-react";
 
 import { requireUser } from "@/lib/auth/session";
-import { resolveScope } from "@/lib/equipment/scope";
+import { resolveScope, scopeRestaurantIds } from "@/lib/equipment/scope";
 import { getDashboardSummary } from "@/lib/db/queries/dashboard";
 import {
   REQUEST_STATUS_LABELS,
   ROLES,
   ROLE_LABELS,
   asUserRole,
+  isTechnicianRole,
   type RequestStatus,
 } from "@/lib/db/enums";
 import { formatDate } from "@/lib/utils";
@@ -76,11 +77,10 @@ function StatCard({
 export default async function DashboardHomePage() {
   const user = await requireUser();
   const scope = await resolveScope();
-  const summary = await getDashboardSummary(scope.restaurantId);
+  const summary = await getDashboardSummary(scopeRestaurantIds(scope));
   const role = asUserRole(user.role);
 
-  const requestsHref =
-    role === ROLES.RESTAURANT_USER ? "/my-requests" : "/requests";
+  const requestsHref = role === ROLES.RESTAURANT_USER ? "/my-requests" : "/requests";
 
   return (
     <div className="p-6">
@@ -139,14 +139,15 @@ export default async function DashboardHomePage() {
                   Equipos según su ciclo de vida
                 </CardDescription>
               </div>
-              {role !== ROLES.RESTAURANT_USER && (
-                <Link
-                  href="/statistics"
-                  className="text-xs font-medium text-primary hover:underline"
-                >
-                  Ver estadísticas
-                </Link>
-              )}
+              {role !== ROLES.RESTAURANT_USER &&
+                !isTechnicianRole(role) && (
+                  <Link
+                    href="/statistics"
+                    className="text-xs font-medium text-primary hover:underline"
+                  >
+                    Ver estadísticas
+                  </Link>
+                )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-2">

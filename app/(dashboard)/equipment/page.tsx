@@ -7,7 +7,7 @@ import {
   restaurants,
   securityLabels,
 } from "@/lib/db/schema";
-import { resolveScope } from "@/lib/equipment/scope";
+import { resolveScope, scopeRestaurantIds } from "@/lib/equipment/scope";
 import { computeLifecycle } from "@/lib/equipment/lifecycle";
 import { ROLES } from "@/lib/db/enums";
 import { EquipmentManager } from "@/components/equipment/equipment-manager";
@@ -19,32 +19,40 @@ export default async function EquipmentPage() {
   const user = await requireRole(
     ROLES.ADMIN,
     ROLES.IT_MANAGER,
-    ROLES.RESTAURANT_USER
+    ROLES.RESTAURANT_USER,
+    ROLES.TECHNICIAN,
+    ROLES.HEAD_TECHNICIAN
   );
   const scope = await resolveScope();
+  const restaurantIds = scopeRestaurantIds(scope);
   const isManager = user.role === ROLES.ADMIN || user.role === ROLES.IT_MANAGER;
 
   const [types, restaurantRows, labels] = await Promise.all([
     db.select().from(equipmentTypes).orderBy(asc(equipmentTypes.name)),
     db.select().from(restaurants).orderBy(asc(restaurants.name)),
-    scope.isGlobal
+    restaurantIds === null
       ? db
           .select({ equipmentId: securityLabels.equipmentId })
           .from(securityLabels)
-      : db
-          .select({ equipmentId: securityLabels.equipmentId })
-          .from(securityLabels)
-          .innerJoin(equipment, eq(securityLabels.equipmentId, equipment.id))
-          .where(eq(equipment.restaurantId, scope.restaurantId!)),
+      : restaurantIds.length === 0
+        ? Promise.resolve([] as { equipmentId: string }[])
+        : db
+            .select({ equipmentId: securityLabels.equipmentId })
+            .from(securityLabels)
+            .innerJoin(equipment, eq(securityLabels.equipmentId, equipment.id))
+            .where(inArray(equipment.restaurantId, restaurantIds)),
   ]);
 
-  const rows = scope.isGlobal
-    ? await db.select().from(equipment).orderBy(asc(equipment.assetCode))
-    : await db
-        .select()
-        .from(equipment)
-        .where(eq(equipment.restaurantId, scope.restaurantId!))
-        .orderBy(asc(equipment.assetCode));
+  const rows =
+    restaurantIds === null
+      ? await db.select().from(equipment).orderBy(asc(equipment.assetCode))
+      : restaurantIds.length === 0
+        ? []
+        : await db
+            .select()
+            .from(equipment)
+            .where(inArray(equipment.restaurantId, restaurantIds))
+            .orderBy(asc(equipment.assetCode));
 
   // El origen/copia y el sustituto son EQUIPOS reales y se resuelven en una sola
   // pasada con `inArray` para no disparar una consulta por fila.
