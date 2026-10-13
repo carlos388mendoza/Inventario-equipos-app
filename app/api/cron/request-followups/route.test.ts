@@ -8,6 +8,8 @@ import { NextRequest } from "next/server";
  *  - sin secreto configurado, sin cabecera o con secreto incorrecto → 401 y
  *    NINGUNA consulta ni efecto sobre la base de datos;
  *  - con el secreto correcto (cabecera propia o Bearer) el proceso continúa;
+ *  - sin proveedor de correo (`RESEND_API_KEY`) no se reclama nada ni se toca
+ *    la base de datos: el seguimiento queda pendiente para cuando se configure;
  *  - una fila ya reclamada por otra ejecución concurrente no se reenvía;
  *  - la respuesta no filtra el secreto.
  */
@@ -90,6 +92,7 @@ function peticion(headers: Record<string, string> = {}) {
 describe("autorización del cron", () => {
   beforeEach(() => {
     vi.stubEnv("CRON_SECRET", SECRETO);
+    vi.stubEnv("RESEND_API_KEY", "clave-de-prueba");
     mocks.state.dbTouched = false;
     mocks.state.dueRows = [];
     mocks.state.claimed = new Set();
@@ -158,11 +161,26 @@ describe("autorización del cron", () => {
     expect(texto).not.toContain(SECRETO);
     expect(texto).not.toContain("x-cron-secret");
   });
+
+  it("sin proveedor de correo no procesa nada y no toca la base de datos", async () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+    mocks.state.dueRows = [{ id: "req-sin-correo" }];
+    const res = await GET(peticion({ "x-cron-secret": SECRETO }));
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toMatchObject({
+      ok: true,
+      skipped: true,
+      reason: "email-not-configured",
+    });
+    expect(mocks.state.dbTouched).toBe(false);
+    expect(mocks.state.sendCalls).toEqual([]);
+  });
 });
 
 describe("concurrencia y fallos del cron", () => {
   beforeEach(() => {
     vi.stubEnv("CRON_SECRET", SECRETO);
+    vi.stubEnv("RESEND_API_KEY", "clave-de-prueba");
     mocks.state.dbTouched = false;
     mocks.state.dueRows = [{ id: "req-1" }];
     mocks.state.claimed = new Set();

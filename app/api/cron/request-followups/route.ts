@@ -11,6 +11,7 @@ import {
   loadRequestContext,
   sendInstallationFollowUp,
 } from "@/lib/requests/notifications";
+import { emailProviderName } from "@/lib/email/send";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +43,18 @@ export async function GET(request: NextRequest) {
   // La autorización se comprueba ANTES de cualquier consulta o efecto.
   if (!secret || !secretsMatch(provided, secret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Sin proveedor de correo configurado no hay nada que enviar y, sobre todo,
+  // no se debe reclamar ninguna fila: marcarla como enviada impediría el correo
+  // real cuando más adelante se configure `RESEND_API_KEY`. Se sale sin tocar
+  // la base de datos; el seguimiento pendiente se procesará entonces.
+  if (emailProviderName() === "none") {
+    return NextResponse.json({
+      ok: true,
+      skipped: true,
+      reason: "email-not-configured",
+    });
   }
 
   const now = new Date();
