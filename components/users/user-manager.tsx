@@ -5,11 +5,22 @@ import { useTransition } from "react";
 import { toast } from "sonner";
 import {
   createUserAction,
+  deleteUserAction,
   toggleUserActiveAction,
   updateUserAction,
 } from "@/app/(dashboard)/users/actions";
 import type { UserDto, RestaurantOption } from "@/app/(dashboard)/users/types";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Card,
   CardContent,
@@ -53,7 +64,6 @@ interface FormState {
   role: string;
   restaurantId: string;
   restaurantIds: string[];
-  active: boolean;
 }
 
 const EMPTY_FORM: FormState = {
@@ -63,21 +73,27 @@ const EMPTY_FORM: FormState = {
   role: ROLES.RESTAURANT_USER,
   restaurantId: "",
   restaurantIds: [],
-  active: true,
 };
+
+type ConfirmAction =
+  | { type: "toggle"; user: UserDto }
+  | { type: "delete"; user: UserDto };
 
 export function UserManager({
   users: initial,
   restaurants,
+  currentUserId,
 }: {
   users: UserDto[];
   restaurants: RestaurantOption[];
+  currentUserId: string;
 }) {
-const [query, setQuery] = React.useState("");
+  const [query, setQuery] = React.useState("");
   const [filter, setFilter] = React.useState<string>("all");
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<UserDto | null>(null);
   const [form, setForm] = React.useState<FormState>(EMPTY_FORM);
+  const [confirm, setConfirm] = React.useState<ConfirmAction | null>(null);
   const { sort, toggle, sortRows } = useTableSort();
   const restaurantNameById = React.useMemo(
     () => new Map(restaurants.map((r) => [r.id, r.name])),
@@ -102,7 +118,6 @@ const [query, setQuery] = React.useState("");
       role: user.role,
       restaurantId: user.restaurantId ?? "",
       restaurantIds: user.assignedRestaurantIds ?? [],
-      active: user.active,
     });
     setDialogOpen(true);
   }
@@ -116,7 +131,6 @@ const [query, setQuery] = React.useState("");
         role: form.role,
         restaurantId: form.restaurantId || null,
         restaurantIds: form.restaurantIds,
-        active: form.active,
         ...(editing ? { id: editing.id } : { password: form.password }),
       };
       const result = editing
@@ -132,19 +146,39 @@ const [query, setQuery] = React.useState("");
     });
   }
 
-  function handleToggle(user: UserDto) {
+  function requestToggle(user: UserDto) {
+    setConfirm({ type: "toggle", user });
+  }
+
+  function requestDelete(user: UserDto) {
+    setConfirm({ type: "delete", user });
+  }
+
+  /** Ejecuta la acción confirmada (activar/desactivar o eliminar). */
+  function runConfirmed() {
+    const action = confirm;
+    if (!action) return;
     startSubmit(async () => {
-      const result = await toggleUserActiveAction({
-        id: user.id,
-        active: !user.active,
-      });
+      const result =
+        action.type === "delete"
+          ? await deleteUserAction({ id: action.user.id })
+          : await toggleUserActiveAction({
+              id: action.user.id,
+              active: !action.user.active,
+            });
+
+      setConfirm(null);
       if (!result.ok) {
-        toast.error(result.error ?? "No se pudo cambiar el estado.");
+        toast.error(result.error ?? "No se pudo completar la acción.");
         return;
       }
-      toast.success(
-        user.active ? "Usuario desactivado." : "Usuario activado."
-      );
+      if (action.type === "delete") {
+        toast.success("Usuario eliminado.");
+      } else {
+        toast.success(
+          action.user.active ? "Usuario desactivado." : "Usuario activado."
+        );
+      }
       refreshAndBroadcast();
     });
   }
@@ -162,7 +196,7 @@ const [query, setQuery] = React.useState("");
     return matchesQuery && matchesFilter;
   });
 
-const counts = {
+  const counts = {
     total: initial.length,
     active: initial.filter((u) => u.active).length,
     inactive: initial.filter((u) => !u.active).length,
@@ -202,6 +236,21 @@ const counts = {
         : [...f.restaurantIds, restaurantId],
     }));
   }
+
+  const confirmTitle = confirm
+    ? confirm.type === "delete"
+      ? "Eliminar usuario"
+      : confirm.user.active
+        ? "Desactivar usuario"
+        : "Activar usuario"
+    : "";
+  const confirmDescription = confirm
+    ? confirm.type === "delete"
+      ? `Se dará de baja a ${confirm.user.name}. No se borra el historial (solicitudes, equipos y movimientos) y se cerrará su sesión: no podrá iniciar sesión ni reactivarse desde aquí.`
+      : confirm.user.active
+        ? `¿Desactivar a ${confirm.user.name}? Se cerrará su sesión. Conserva su rol y su restaurante asignado.`
+        : `¿Activar a ${confirm.user.name}? Podrá iniciar sesión de nuevo.`
+    : "";
 
   return (
     <div className="space-y-4">
@@ -245,7 +294,7 @@ const counts = {
           <div className="overflow-x-auto rounded-md border">
             <table className="w-full min-w-[40rem] text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
-<tr>
+                <tr>
                   <SortableHeader
                     label="Nombre"
                     sortKey="name"
@@ -290,53 +339,74 @@ const counts = {
                     </td>
                   </tr>
                 )}
-                {sorted.map((u) => (
-                  <tr key={u.id} className="border-t">
-                    <td className="px-4 py-2 font-medium">{u.name}</td>
-                    <td className="px-4 py-2 text-muted-foreground">
-                      {u.email}
-                    </td>
-                    <td className="px-4 py-2">
-                      <Badge variant="outline">
-                        {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS] ??
-                          u.role}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-2 text-muted-foreground">
-                      {isTechnicianRole(asUserRole(u.role))
-                        ? u.assignedRestaurantIds.length > 0
-                          ? u.assignedRestaurantIds
-                              .map((id) => restaurantNameById.get(id) ?? id)
-                              .join(", ")
-                          : "Sin asignar"
-                        : u.restaurantName ?? "—"}
-                    </td>
-                    <td className="px-4 py-2">
-                      <Badge variant={u.active ? "default" : "secondary"}>
-                        {u.active ? "Activo" : "Inactivo"}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <div className="inline-flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openEdit(u)}
-                        >
-                          Editar
-                        </Button>
-                        <Button
-                          variant={u.active ? "secondary" : "outline"}
-                          size="sm"
-                          disabled={submitting}
-                          onClick={() => handleToggle(u)}
-                        >
-                          {u.active ? "Desactivar" : "Activar"}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {sorted.map((u) => {
+                  const isSelf = u.id === currentUserId;
+                  return (
+                    <tr key={u.id} className="border-t">
+                      <td className="px-4 py-2 font-medium">{u.name}</td>
+                      <td className="px-4 py-2 text-muted-foreground">
+                        {u.email}
+                      </td>
+                      <td className="px-4 py-2">
+                        <Badge variant="outline">
+                          {ROLE_LABELS[u.role as keyof typeof ROLE_LABELS] ??
+                            u.role}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-2 text-muted-foreground">
+                        {isTechnicianRole(asUserRole(u.role))
+                          ? u.assignedRestaurantIds.length > 0
+                            ? u.assignedRestaurantIds
+                                .map((id) => restaurantNameById.get(id) ?? id)
+                                .join(", ")
+                            : "Sin asignar"
+                          : u.restaurantName ?? "—"}
+                      </td>
+                      <td className="px-4 py-2">
+                        <Badge variant={u.active ? "default" : "secondary"}>
+                          {u.active ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <div className="inline-flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEdit(u)}
+                          >
+                            Editar
+                          </Button>
+                          <Button
+                            variant={u.active ? "secondary" : "outline"}
+                            size="sm"
+                            disabled={submitting || isSelf}
+                            title={
+                              isSelf
+                                ? "No puedes cambiar el estado de tu propia cuenta"
+                                : undefined
+                            }
+                            onClick={() => requestToggle(u)}
+                          >
+                            {u.active ? "Desactivar" : "Activar"}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            disabled={submitting || isSelf}
+                            title={
+                              isSelf
+                                ? "No puedes eliminar tu propia cuenta"
+                                : undefined
+                            }
+                            onClick={() => requestDelete(u)}
+                          >
+                            Eliminar
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -416,7 +486,7 @@ const counts = {
                 </SelectContent>
               </Select>
             </div>
-<div className="space-y-2">
+            <div className="space-y-2">
               <Label>Restaurante</Label>
               {technicianRole ? (
                 <>
@@ -456,7 +526,9 @@ const counts = {
                     <SelectTrigger>
                       <SelectValue
                         placeholder={
-                          restaurantRequired ? "Selecciona un restaurante" : "Sin restaurante"
+                          restaurantRequired
+                            ? "Selecciona un restaurante"
+                            : "Sin restaurante"
                         }
                       />
                     </SelectTrigger>
@@ -480,25 +552,13 @@ const counts = {
                 </>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <input
-                id="user-active"
-                type="checkbox"
-                checked={form.active}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, active: e.target.checked }))
-                }
-                className="h-4 w-4"
-              />
-              <Label htmlFor="user-active">Cuenta activa</Label>
-            </div>
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="outline">
                   Cancelar
                 </Button>
               </DialogClose>
-<Button
+              <Button
                 type="submit"
                 disabled={submitting || (restaurantRequired && !form.restaurantId)}
               >
@@ -508,6 +568,41 @@ const counts = {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={confirm !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirm(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={submitting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={submitting}
+              className={
+                confirm?.type === "delete"
+                  ? buttonVariants({ variant: "destructive" })
+                  : undefined
+              }
+              onClick={(e) => {
+                e.preventDefault();
+                runConfirmed();
+              }}
+            >
+              {confirm?.type === "delete"
+                ? "Eliminar"
+                : confirm?.user.active
+                  ? "Desactivar"
+                  : "Activar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { APIError } from "better-auth/api";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/lib/db";
 import {
@@ -27,7 +28,7 @@ if (!secret) {
  * - Correo/contraseña habilitado y registro público deshabilitado
  *   (los usuarios se crean desde el panel de administración).
  * - Campos adicionales del usuario (no editables desde el cliente):
- *   role, restaurantId y active.
+ *   role, restaurantId, active y deletedAt (baja lógica).
  * - Adapter de Drizzle sobre Turso/libSQL.
  */
 export const auth = betterAuth({
@@ -62,6 +63,37 @@ export const auth = betterAuth({
         type: "boolean",
         input: false,
         defaultValue: true,
+      },
+      deletedAt: {
+        type: "date",
+        input: false,
+        required: false,
+      },
+    },
+  },
+  /**
+   * Bloquea la creación de sesión para cuentas deshabilitadas o dadas de baja
+   * lógica (mismo patrón que usa el plugin admin de Better Auth). Es la barrera
+   * de servidor que impide iniciar sesión a un usuario inactivo o eliminado
+   * aunque conozca su contraseña; una cuenta dada de baja nunca puede reactivarse
+   * por sí sola.
+   */
+  databaseHooks: {
+    session: {
+      create: {
+        async before(session, ctx) {
+          if (!ctx) return;
+          const user = (await ctx.context.internalAdapter.findUserById(
+            session.userId
+          )) as { active?: boolean; deletedAt?: Date | null } | null;
+          if (!user) return;
+          if (user.active === false || user.deletedAt) {
+            throw APIError.from("FORBIDDEN", {
+              message: "Esta cuenta no está habilitada.",
+              code: "ACCOUNT_DISABLED",
+            });
+          }
+        },
       },
     },
   },

@@ -22,6 +22,12 @@ export const userTable = sqliteTable("user", {
   role: text("role").$type<UserRole>().notNull().default(ROLES.RESTAURANT_USER),
   restaurantId: text("restaurantId"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
+  /**
+   * Baja lógica (soft delete). `null` = cuenta vigente; una fecha = cuenta
+   * eliminada por un administrador. La fila NO se borra para conservar el
+   * historial de solicitudes, equipos y movimientos que la referencian.
+   */
+  deletedAt: integer("deletedAt", { mode: "timestamp_ms" }),
 });
 
 export const sessionTable = sqliteTable("session", {

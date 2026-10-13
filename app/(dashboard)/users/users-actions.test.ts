@@ -91,6 +91,7 @@ const {
   updateUserAction,
   setTechnicianAssignmentsAction,
   toggleUserActiveAction,
+  deleteUserAction,
 } = await import("@/app/(dashboard)/users/actions");
 
 function como(rol: string, id = "u-1") {
@@ -113,6 +114,7 @@ beforeEach(() => {
   mocks.state.deleteCalled = 0;
   mocks.state.dbTouched = false;
   mocks.createUser.mockClear();
+  mocks.revokeUserSessions.mockClear();
   mocks.requireRole.mockClear();
 });
 
@@ -254,5 +256,178 @@ describe("setTechnicianAssignmentsAction: puerta y reglas (#16)", () => {
     expect(mocks.state.inserts.at(-1)).toEqual(
       expect.arrayContaining([expect.objectContaining({ userId: "u-2" })]),
     );
+  });
+});
+
+describe("deleteUserAction: la puerta es solo ADMIN", () => {
+  it("rechaza a un jefe de técnicos antes de tocar la base de datos", async () => {
+    como(ROLES.HEAD_TECHNICIAN);
+    await expect(deleteUserAction({ id: "u-x" })).rejects.toThrow(/NEXT_REDIRECT/);
+    expect(mocks.state.dbTouched).toBe(false);
+  });
+
+  it("pide exactamente ADMIN", async () => {
+    como(ROLES.ADMIN);
+    mocks.state.selectQueue.push([
+      { id: "u-2", role: ROLES.RESTAURANT_USER, active: true, deletedAt: null },
+    ]);
+    await deleteUserAction({ id: "u-2" });
+    const args = mocks.requireRole.mock.calls.at(-1) as string[];
+    expect(args).toEqual([ROLES.ADMIN]);
+  });
+});
+
+describe("deleteUserAction: baja lógica (conserva el historial)", () => {
+  it("marca deletedAt y desactiva, sin borrar filas, y revoca sesiones", async () => {
+    como(ROLES.ADMIN, "u-1");
+    mocks.state.selectQueue.push([
+      { id: "u-2", role: ROLES.RESTAURANT_USER, active: true, deletedAt: null },
+    ]);
+    const resultado = await deleteUserAction({ id: "u-2" });
+    expect(resultado.ok).toBe(true);
+
+    // No se borra ninguna fila: solicitudes, equipos y movimientos quedan intactos.
+    expect(mocks.state.deleteCalled).toBe(0);
+
+    const set = mocks.state.updateSets.at(-1)!;
+    expect(set.deletedAt).toBeInstanceOf(Date);
+    expect(set.active).toBe(false);
+    // Se conservan rol y restaurante (no se envían en el UPDATE).
+    expect(set).not.toHaveProperty("role");
+    expect(set).not.toHaveProperty("restaurantId");
+
+    expect(mocks.revokeUserSessions).toHaveBeenCalledWith("u-2");
+  });
+});
+
+describe("último administrador activo: protegido", () => {
+  it("no elimina al único admin activo", async () => {
+    como(ROLES.ADMIN, "u-1");
+    mocks.state.selectQueue.push([
+      { id: "u-2", role: ROLES.ADMIN, active: true, deletedAt: null },
+    ]);
+    mocks.state.selectQueue.push([{ id: "u-2" }]); // listActiveAdminIds: solo él
+    const resultado = await deleteUserAction({ id: "u-2" });
+    expect(resultado.ok).toBe(false);
+    expect(resultado).toMatchObject({
+      error: expect.stringMatching(/último administrador/i),
+    });
+    expect(mocks.state.updateSets).toHaveLength(0);
+    expect(mocks.revokeUserSessions).not.toHaveBeenCalled();
+  });
+
+  it("no desactiva al único admin activo", async () => {
+    como(ROLES.ADMIN, "u-1");
+    mocks.state.selectQueue.push([
+      { id: "u-2", role: ROLES.ADMIN, active: true, deletedAt: null },
+    ]);
+    mocks.state.selectQueue.push([{ id: "u-2" }]);
+    const resultado = await toggleUserActiveAction({ id: "u-2", active: false });
+    expect(resultado.ok).toBe(false);
+    expect(resultado).toMatchObject({
+      error: expect.stringMatching(/último administrador/i),
+    });
+    expect(mocks.state.updateSets).toHaveLength(0);
+  });
+
+  it("permite eliminar a un admin si queda otro admin activo", async () => {
+    como(ROLES.ADMIN, "u-1");
+    mocks.state.selectQueue.push([
+      { id: "u-2", role: ROLES.ADMIN, active: true, deletedAt: null },
+    ]);
+    mocks.state.selectQueue.push([{ id: "u-1" }, { id: "u-2" }]);
+    const resultado = await deleteUserAction({ id: "u-2" });
+    expect(resultado.ok).toBe(true);
+  });
+});
+
+describe("auto-bloqueo: un admin no puede tocarse a sí mismo", () => {
+  it("no se desactiva a sí mismo", async () => {
+    como(ROLES.ADMIN, "u-1");
+    mocks.state.selectQueue.push([
+      { id: "u-1", role: ROLES.ADMIN, active: true, deletedAt: null },
+    ]);
+    const resultado = await toggleUserActiveAction({ id: "u-1", active: false });
+    expect(resultado.ok).toBe(false);
+    expect(resultado).toMatchObject({
+      error: expect.stringMatching(/propia cuenta/i),
+    });
+    expect(mocks.state.updateSets).toHaveLength(0);
+  });
+
+  it("no se elimina a sí mismo", async () => {
+    como(ROLES.ADMIN, "u-1");
+    mocks.state.selectQueue.push([
+      { id: "u-1", role: ROLES.ADMIN, active: true, deletedAt: null },
+    ]);
+    const resultado = await deleteUserAction({ id: "u-1" });
+    expect(resultado.ok).toBe(false);
+    expect(resultado).toMatchObject({
+      error: expect.stringMatching(/propia cuenta/i),
+    });
+    expect(mocks.revokeUserSessions).not.toHaveBeenCalled();
+  });
+});
+
+describe("cuentas dadas de baja: no se reactivan ni se vuelven a tocar", () => {
+  it("toggle rechaza una cuenta dada de baja", async () => {
+    como(ROLES.ADMIN, "u-1");
+    mocks.state.selectQueue.push([
+      { id: "u-2", role: ROLES.RESTAURANT_USER, active: false, deletedAt: new Date() },
+    ]);
+    const resultado = await toggleUserActiveAction({ id: "u-2", active: true });
+    expect(resultado.ok).toBe(false);
+    expect(resultado).toMatchObject({
+      error: expect.stringMatching(/baja/i),
+    });
+    expect(mocks.state.updateSets).toHaveLength(0);
+  });
+
+  it("delete rechaza una cuenta ya dada de baja", async () => {
+    como(ROLES.ADMIN, "u-1");
+    mocks.state.selectQueue.push([
+      { id: "u-2", role: ROLES.RESTAURANT_USER, active: false, deletedAt: new Date() },
+    ]);
+    const resultado = await deleteUserAction({ id: "u-2" });
+    expect(resultado.ok).toBe(false);
+    expect(resultado).toMatchObject({
+      error: expect.stringMatching(/ya está dada de baja/i),
+    });
+  });
+});
+
+describe("toggleUserActiveAction: conserva rol y restaurante y revoca sesiones", () => {
+  it("desactivar solo cambia active y revoca las sesiones", async () => {
+    como(ROLES.ADMIN, "u-1");
+    mocks.state.selectQueue.push([
+      { id: "u-2", role: ROLES.RESTAURANT_USER, active: true, deletedAt: null },
+    ]);
+    const resultado = await toggleUserActiveAction({ id: "u-2", active: false });
+    expect(resultado.ok).toBe(true);
+    const set = mocks.state.updateSets.at(-1)!;
+    expect(set.active).toBe(false);
+    expect(set).not.toHaveProperty("role");
+    expect(set).not.toHaveProperty("restaurantId");
+    expect(mocks.revokeUserSessions).toHaveBeenCalledWith("u-2");
+  });
+});
+
+describe("updateUserAction: no permite autodespojarse del rol admin", () => {
+  it("bloquea quitarse a sí mismo el rol de administrador", async () => {
+    como(ROLES.ADMIN, "u-1");
+    mocks.state.selectQueue.push([
+      { id: "u-1", role: ROLES.ADMIN, active: true, deletedAt: null },
+    ]);
+    const resultado = await updateUserAction({
+      id: "u-1",
+      name: "Admin",
+      email: "a@test.local",
+      role: ROLES.IT_MANAGER,
+    });
+    expect(resultado.ok).toBe(false);
+    expect(resultado).toMatchObject({
+      error: expect.stringMatching(/quitarte/i),
+    });
+    expect(mocks.state.updateSets).toHaveLength(0);
   });
 });

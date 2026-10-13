@@ -57,7 +57,6 @@ export const createUserSchema = z
      * a TECHNICIAN / HEAD_TECHNICIAN; para el resto se ignora en el servidor.
      */
     restaurantIds: z.array(z.string().trim().min(1)).optional(),
-    active: z.boolean().default(true),
   })
   .superRefine((data, ctx) => {
     if (doesRequireRestaurant(data)) addRestaurantRequiredIssue(ctx);
@@ -84,7 +83,6 @@ export const updateUserSchema = z
     }),
     restaurantId: z.string().trim().min(1).nullable().optional(),
     restaurantIds: z.array(z.string().trim().min(1)).optional(),
-    active: z.boolean(),
   })
   .superRefine((data, ctx) => {
     if (doesRequireRestaurant(data)) addRestaurantRequiredIssue(ctx);
@@ -92,7 +90,20 @@ export const updateUserSchema = z
 
 export type UpdateUser = z.infer<typeof updateUserSchema>;
 
+/**
+ * El estado (`active`) NO se cambia desde crear/editar: se gestiona con la
+ * acción dedicada `toggleUserActiveAction`, que aplica las guardas (último
+ * administrador, propia cuenta). Editar y desactivar son caminos separados para
+ * que ninguna edición salte esas reglas.
+ */
+
+/** Activar o desactivar una cuenta (nunca una dada de baja). */
 export const toggleUserActiveSchema = z.object({
   id: z.string().min(1),
   active: z.boolean(),
+});
+
+/** Dar de baja lógica una cuenta (conserva el historial). */
+export const deleteUserSchema = z.object({
+  id: z.string().min(1),
 });

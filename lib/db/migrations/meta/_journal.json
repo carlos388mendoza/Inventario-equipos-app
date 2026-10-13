@@ -43,6 +43,13 @@
       "when": 1791856124049,
       "tag": "0005_cooing_dust",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1791909003073,
+      "tag": "0006_aromatic_mandrill",
+      "breakpoints": true
     }
   ]
 }

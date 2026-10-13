@@ -10,7 +10,7 @@ import type { RestaurantOption, UserDto } from "./types";
 export const dynamic = "force-dynamic";
 
 export default async function UsersPage() {
-  await requireRole(ROLES.ADMIN);
+  const currentUser = await requireRole(ROLES.ADMIN);
 
   const rows = await listUsers();
 
@@ -42,7 +42,11 @@ export default async function UsersPage() {
 
   return (
     <main className="p-4 sm:p-6">
-      <UserManager users={users} restaurants={restaurantOptions} />
+      <UserManager
+        users={users}
+        restaurants={restaurantOptions}
+        currentUserId={currentUser.id}
+      />
     </main>
   );
 }
