@@ -33,3 +33,19 @@ export function groupNavItems(items: readonly NavItem[]): NavGroup[] {
     items: items.filter((item) => item.group === group.id),
   })).filter((group) => group.items.length > 0);
 }
+
+/**
+ * Secciones de la navegación principal (las que no son secundarias). Son las
+ * que se listan siempre en el sidebar, agrupadas.
+ */
+export function getPrimaryNavItems(items: readonly NavItem[]): NavItem[] {
+  return items.filter((item) => item.secondary !== true);
+}
+
+/**
+ * Secciones secundarias (configuración y herramientas). No se listan en la
+ * navegación principal: se ofrecen desde el menú de tres puntos del sidebar.
+ */
+export function getSecondaryNavItems(items: readonly NavItem[]): NavItem[] {
+  return items.filter((item) => item.secondary === true);
+}

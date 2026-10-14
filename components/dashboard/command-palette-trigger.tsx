@@ -58,7 +58,7 @@ export function CommandPaletteTrigger({
       aria-label={trigger.ariaLabel}
       data-command-palette-trigger={trigger.id}
       className={cn(
-        "h-9 justify-start gap-2 rounded-full px-3.5 font-normal text-muted-foreground",
+        "h-9 w-60 max-w-full justify-start gap-2 rounded-full px-3.5 font-normal text-muted-foreground",
         className
       )}
     >

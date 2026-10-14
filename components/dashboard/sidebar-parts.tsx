@@ -3,13 +3,25 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { LogOut, MoreHorizontal } from "lucide-react";
 
 import { signOut } from "@/lib/auth/client";
 import { type NavItem } from "@/lib/navigation";
-import { groupNavItems } from "@/lib/ui/sidebar";
+import {
+  getPrimaryNavItems,
+  getSecondaryNavItems,
+  groupNavItems,
+} from "@/lib/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -135,9 +147,10 @@ export function NavLink({
 /**
  * Lista de navegación agrupada.
  *
- * Con etiquetas (`collapsed` en falso) muestra los encabezados de grupo para que
- * el administrador no vea una lista plana y saturada. Contraída, oculta los
- * encabezados y los textos: solo iconos, con un separador entre grupos.
+ * Solo lista las secciones principales (las secundarias van al menú de tres
+ * puntos). Con etiquetas (`collapsed` en falso) muestra los encabezados de grupo
+ * para que el administrador no vea una lista plana y saturada. Contraída, oculta
+ * los encabezados y los textos: solo iconos, con un separador entre grupos.
  */
 export function SidebarNav({
   items,
@@ -150,34 +163,132 @@ export function SidebarNav({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
-  const groups = groupNavItems(items);
+  const groups = groupNavItems(getPrimaryNavItems(items));
+  const secondaryItems = getSecondaryNavItems(items);
   return (
     <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
-      {groups.map((group, groupIndex) => (
-        <React.Fragment key={group.id}>
-          {collapsed ? (
-            groupIndex > 0 && (
-              <div className="mx-2 my-1 h-px bg-border" aria-hidden="true" />
-            )
-          ) : (
-            <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {group.label}
-            </p>
-          )}
-          <ul className="flex flex-col gap-1">
-            {group.items.map((item) => (
-              <NavLink
-                key={item.href}
-                item={item}
-                active={isActiveRoute(pathname, item)}
-                collapsed={collapsed}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </ul>
-        </React.Fragment>
-      ))}
+      {groups.map((group, groupIndex) => {
+        const separated = group.id === "settings" && groupIndex > 0;
+        return (
+          <React.Fragment key={group.id}>
+            {collapsed ? (
+              groupIndex > 0 && (
+                <div className="mx-2 my-1 h-px bg-border" aria-hidden="true" />
+              )
+            ) : (
+              <p
+                className={cn(
+                  "px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground",
+                  separated && "mt-1 border-t border-border"
+                )}
+              >
+                {group.label}
+              </p>
+            )}
+            <ul className="flex flex-col gap-1">
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.href}
+                  item={item}
+                  active={isActiveRoute(pathname, item)}
+                  collapsed={collapsed}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </ul>
+          </React.Fragment>
+        );
+      })}
+      <SidebarSecondaryMenu
+        items={secondaryItems}
+        collapsed={collapsed}
+        onNavigate={onNavigate}
+      />
     </nav>
+  );
+}
+
+/**
+ * Menú de opciones secundarias del sidebar (botón de tres puntos).
+ *
+ * Las secciones marcadas como `secondary` en `NAV_ITEMS` (configuración y
+ * herramientas) no se listan en la navegación principal para no saturarla: se
+ * ofrecen aquí. Es un `DropdownMenu` de Radix, así que se abre al pulsar el
+ * botón y se cierra al elegir una opción, al pulsar fuera o con `Escape`
+ * (ratón, teclado y táctil). Respeta los mismos grupos y permisos porque usa la
+ * misma referencia de secciones ya filtrada por rol.
+ *
+ * Contraído, el acceso se reduce al icono y conserva su nombre accesible, con
+ * tooltip. Si el rol no tiene ninguna sección secundaria, no se dibuja nada (ni
+ * botón ni menú vacío).
+ */
+export function SidebarSecondaryMenu({
+  items,
+  collapsed = false,
+  onNavigate,
+}: {
+  items: NavItem[];
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}) {
+  const groups = groupNavItems(items);
+  if (groups.length === 0) return null;
+
+  const trigger = (
+    <Button
+      type="button"
+      variant="ghost"
+      size={collapsed ? "icon" : "sm"}
+      aria-label="Más opciones"
+      className={cn(
+        "text-muted-foreground",
+        collapsed ? "mx-auto" : "w-full justify-start gap-3 px-3"
+      )}
+    >
+      <MoreHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
+      {!collapsed && <span className="truncate">Más opciones</span>}
+    </Button>
+  );
+
+  return (
+    <div className="mt-1 border-t pt-2">
+      <DropdownMenu>
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right">Más opciones</TooltipContent>
+          </Tooltip>
+        ) : (
+          <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+        )}
+        <DropdownMenuContent
+          side={collapsed ? "right" : "bottom"}
+          align="start"
+          collisionPadding={8}
+          className="w-56"
+        >
+          {groups.map((group, groupIndex) => (
+            <React.Fragment key={group.id}>
+              {groupIndex > 0 && <DropdownMenuSeparator />}
+              <DropdownMenuLabel>{group.label}</DropdownMenuLabel>
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <DropdownMenuItem key={item.href} asChild>
+                    <Link href={item.href} onClick={onNavigate}>
+                      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  </DropdownMenuItem>
+                );
+              })}
+            </React.Fragment>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 

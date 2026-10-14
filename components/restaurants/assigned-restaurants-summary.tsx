@@ -16,10 +16,10 @@ import { cn } from "@/lib/utils";
  * Resumen de restaurantes asignados (sección 7).
  *
  * En vez de volcar todos los nombres en una celda que crece sin control, muestra
- * hasta dos y resume el resto en un indicador `+N`. Al pulsarlo se abre un menú
- * accesible con la lista completa, de modo que la información nunca se oculta:
- * el contador sale del número real de restaurantes restantes y siempre se puede
- * consultar la lista entera.
+ * hasta dos y, solo cuando quedan más, añade un discreto botón de tres puntos.
+ * Al pulsarlo se abre un menú accesible con la lista completa, de modo que la
+ * información nunca se oculta. No se muestra ningún contador numérico: el botón
+ * aparece únicamente si de verdad hay restaurantes de más.
  *
  * Es una sola implementación reutilizada por todos los sitios que resumen
  * asignaciones (ficha de técnicos y tabla de usuarios), para no duplicar el
@@ -48,10 +48,9 @@ export function AssignedRestaurantsSummary({
           <DropdownMenuTrigger
             type="button"
             aria-label={`Ver los ${names.length} restaurantes asignados`}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
-            <MoreHorizontal className="h-3 w-3" aria-hidden="true" />
-            <span className="tabular-nums">+{hiddenCount}</span>
+            <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="max-h-72 overflow-y-auto">
             <DropdownMenuLabel>

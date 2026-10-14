@@ -23,13 +23,19 @@ import { ROLES, type UserRole } from "@/lib/db/enums";
  * se lea por bloques en vez de como una lista plana y saturada. Un grupo que no
  * tenga secciones visibles para el rol actual no se dibuja.
  */
-export type NavGroupId = "general" | "inventory" | "requests" | "administration";
+export type NavGroupId =
+  | "general"
+  | "inventory"
+  | "requests"
+  | "administration"
+  | "settings";
 
 export const NAV_GROUPS: { id: NavGroupId; label: string }[] = [
   { id: "general", label: "General" },
   { id: "inventory", label: "Inventario" },
   { id: "requests", label: "Solicitudes" },
   { id: "administration", label: "Administración" },
+  { id: "settings", label: "Sistema" },
 ];
 
 export interface NavItem {
@@ -40,6 +46,15 @@ export interface NavItem {
   roles: UserRole[];
   /** Bloque visual al que pertenece la sección dentro del sidebar. */
   group: NavGroupId;
+  /**
+   * Sección secundaria (configuración o herramientas de uso esporádico).
+   *
+   * Las secundarias no se listan en la navegación principal del sidebar para no
+   * saturarla: se ofrecen desde el menú de tres puntos. Siguen existiendo en
+   * `NAV_ITEMS`, así que la paleta de búsqueda las encuentra igual y los permisos
+   * (`roles`) no cambian.
+   */
+  secondary?: boolean;
 }
 
 /**
@@ -132,6 +147,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: BarChart3,
     group: "administration",
     roles: [ROLES.ADMIN, ROLES.IT_MANAGER],
+    secondary: true,
   },
   {
     href: "/labels",
@@ -139,6 +155,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: QrCode,
     group: "inventory",
     roles: [ROLES.ADMIN, ROLES.IT_MANAGER],
+    secondary: true,
   },
   {
     href: "/restaurants",
@@ -146,6 +163,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Store,
     group: "administration",
     roles: [ROLES.ADMIN],
+    secondary: true,
   },
   {
     href: "/equipment-types",
@@ -153,6 +171,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Tags,
     group: "administration",
     roles: [ROLES.ADMIN],
+    secondary: true,
   },
   {
     href: "/users",
@@ -165,7 +184,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/settings",
     label: "Ajustes",
     icon: Settings,
-    group: "general",
+    group: "settings",
     roles: [ROLES.ADMIN, ROLES.IT_MANAGER, ROLES.RESTAURANT_USER],
   },
 ];
