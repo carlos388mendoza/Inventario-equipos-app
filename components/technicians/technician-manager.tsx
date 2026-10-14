@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { AssignedRestaurantsSummary } from "@/components/restaurants/assigned-restaurants-summary";
 import { ROLE_LABELS } from "@/lib/db/enums";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
 
@@ -129,11 +130,11 @@ export function TechnicianManager({
                           </Badge>
                         </td>
                         <td className="px-4 py-2 text-muted-foreground">
-                          {t.assignedRestaurantIds.length > 0
-                            ? t.assignedRestaurantIds
-                                .map((id) => restaurantNameById.get(id) ?? id)
-                                .join(", ")
-                            : "Sin asignar"}
+                          <AssignedRestaurantsSummary
+                            names={t.assignedRestaurantIds.map(
+                              (id) => restaurantNameById.get(id) ?? id
+                            )}
+                          />
                         </td>
                         <td className="px-4 py-2 text-right">
                           {lock ? (

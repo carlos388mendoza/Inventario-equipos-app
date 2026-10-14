@@ -35,8 +35,9 @@ describe("CommandPaletteTrigger · botón de escritorio", () => {
     expect(html).toContain("Buscar");
   });
 
-  it("muestra la pista del atajo Ctrl K", () => {
-    expect(html).toContain("Ctrl K");
+  it("no muestra la pista del atajo Ctrl K (la interfaz queda limpia)", () => {
+    expect(html).not.toContain("Ctrl K");
+    expect(html).not.toContain("Ctrl+K");
   });
 
   it("se identifica como disparador de escritorio", () => {

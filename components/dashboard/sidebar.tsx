@@ -1,51 +1,33 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Menu } from "lucide-react";
-import { signOut } from "@/lib/auth/client";
-import { type NavItem } from "@/lib/navigation";
+import { usePathname } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
 import { getNavItemsForRole } from "@/lib/ui/command-palette";
+import { SIDEBAR_COLLAPSED_STORAGE_KEY } from "@/lib/ui/sidebar";
 import { ROLE_LABELS, type UserRole } from "@/lib/db/enums";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { GrupoComidasMark } from "@/components/brand/grupo-comidas-mark";
-import { CommandPaletteTrigger } from "@/components/dashboard/command-palette-trigger";
-import { useCommandPalette } from "@/components/dashboard/command-palette-provider";
+  BrandMark,
+  SidebarNav,
+  SignOutButton,
+  UserSummary,
+} from "@/components/dashboard/sidebar-parts";
 
 /**
- * Navegación del dashboard.
+ * Sidebar de escritorio (a partir de `lg`).
  *
- * `lg` (1024px) es el breakpoint que ya usaba el resto de la aplicación, así que
- * se reutiliza en vez de inventar uno nuevo:
+ * Se puede contraer a una versión estrecha que muestra solo los iconos, para
+ * liberar espacio de trabajo (patrón tipo ChatGPT). El control para expandir y
+ * contraer vive en la propia barra y siempre está visible. La preferencia se
+ * recuerda en `localStorage`, siguiendo el mismo patrón que la densidad de
+ * tablas de Ajustes: se lee tras montar para no romper la hidratación.
  *
- *   - desde `lg`: sidebar fijo de 256px, como estaba.
- *   - por debajo de `lg`: solo una barra superior con el botón de menú; las
- *     opciones viven en un panel lateral. Antes el menú se desplegaba como una
- *     tira horizontal con scroll, que dejaba el contenido squeezed y sin access
- *     a las secciones del final sin descubrirlas.
- *
- * Las dos pinturas leen la MISMA lista filtrada por rol y el mismo `NAV_ITEMS`,
- * así que no hay opciones duplicadas ni una ruta que se pierda: la barra móvil
- * solo sustituye a la presentación.
- *
- * Cada pintura incluye además su botón de búsqueda (#19) —con etiqueta «Buscar»
- * y `Ctrl K` en escritorio, solo icono en móvil— y los dos abren la misma paleta
- * de comandos a través de `useCommandPalette`.
+ * El panel móvil (drawer) NO vive aquí: lo aporta `DashboardTopBar`, que es
+ * donde está el botón de menú. Ambos comparten las piezas de `sidebar-parts` y
+ * la MISMA lista filtrada por rol, así que no hay rutas ni permisos duplicados.
  */
 export function DashboardSidebar({
   role,
@@ -57,231 +39,84 @@ export function DashboardSidebar({
   email: string;
 }) {
   const pathname = usePathname();
-  const [open, setOpen] = React.useState(false);
-  const { openPalette } = useCommandPalette();
+  const [collapsed, setCollapsed] = React.useState(false);
   const items = getNavItemsForRole(role);
 
-  // El panel se cierra al cambiar de ruta: si no, al navegar con el drawer
-  // abierto seguiría tapando la página de destino. Se ajusta durante el render en
-  // lugar de con un efecto, para no provocar un render en cascada; los enlaces
-  // del panel además lo cierran al pulsarlos.
-  const [openedAt, setOpenedAt] = React.useState(pathname);
-  if (open && openedAt !== pathname) {
-    setOpen(false);
-    setOpenedAt(pathname);
-  }
+  // Preferencia recordada. Se aplica tras montar (no durante el render) para
+  // evitar diferencias de hidratación, igual que el tema en `ThemeToggle`.
+  React.useEffect(() => {
+    try {
+      if (window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "true") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setCollapsed(true);
+      }
+    } catch {
+      // localStorage puede no estar disponible (modo privado estricto).
+    }
+  }, []);
 
-  const initials =
-    name
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase() || "?";
-
-  function isActiveRoute(item: NavItem) {
-    return (
-      pathname === item.href ||
-      (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"))
-    );
-  }
-
-  return (
-    <>
-      {/* Sidebar de escritorio: intacto, a partir de lg. */}
-      <aside className="hidden shrink-0 border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:flex-col">
-        <div className="flex flex-col items-center gap-0 border-b px-4 py-4">
-          <div className="flex shrink-0 items-center justify-center">
-            <GrupoComidasMark size={56} />
-          </div>
-          <div className="mt-2 w-full">
-            <p className="truncate text-center text-sm font-semibold leading-tight">
-              Inventario Equipos
-            </p>
-            <p className="text-center text-[11px] font-medium text-gold">
-              Grupo Comidas
-            </p>
-          </div>
-        </div>
-
-        {/* Botón de búsqueda de escritorio (#19): abre la paleta de comandos. */}
-        <div className="px-2 pt-2">
-          <CommandPaletteTrigger variant="desktop" onOpen={openPalette} />
-        </div>
-
-        <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
-          {items.map((item) => (
-            <NavLink key={item.href} item={item} active={isActiveRoute(item)} />
-          ))}
-        </nav>
-
-        <div className="border-t p-3">
-          <Card>
-            <CardHeader className="flex-row items-center gap-3 space-y-0 p-3">
-              <GrupoComidasMark size={36} />
-              <div className="min-w-0">
-                <CardTitle className="truncate text-sm">{name}</CardTitle>
-                <CardDescription className="truncate text-xs">
-                  {email} · {ROLE_LABELS[role]}
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <SignOutButton />
-            </CardContent>
-          </Card>
-        </div>
-      </aside>
-
-      {/* Barra móvil: marca a la izquierda, menú a la derecha. */}
-      <div className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b bg-card px-4 py-2.5 lg:hidden">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <GrupoComidasMark size={36} />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold leading-tight">
-              Inventario Equipos
-            </p>
-            <p className="truncate text-[11px] font-medium text-gold">
-              Grupo Comidas
-            </p>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {/* Botón de búsqueda móvil (#19): abre la misma paleta, sin teclado. */}
-          <CommandPaletteTrigger variant="mobile" onOpen={openPalette} />
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Abrir menú"
-                aria-expanded={open}
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-0">
-              <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-              <div className="flex items-center gap-2.5 border-b px-4 py-3">
-                <GrupoComidasMark size={36} />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold leading-tight">
-                    Inventario Equipos
-                  </p>
-                  <p className="truncate text-[11px] font-medium text-gold">
-                    Grupo Comidas
-                  </p>
-                </div>
-              </div>
-
-              <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
-                {items.map((item) => (
-                  <NavLink
-                    key={item.href}
-                    item={item}
-                    active={isActiveRoute(item)}
-                    onNavigate={() => setOpen(false)}
-                  />
-                ))}
-              </nav>
-
-              <div className="border-t p-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                    {initials}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{name}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {ROLE_LABELS[role]}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <SignOutButton />
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </div>
-    </>
-  );
-}
-
-/**
- * Botón de cierre de sesión con confirmación.
- *
- * Antes de la confirmación, un toque en "Cerrar sesión" cerraba la sesión al
- * instante; un toque accidental obligaba a volver a entrar. Ahora pide un
- * segundo paso explícito que además evita el signOut en mitad de un flujo.
- */
-function SignOutButton() {
-  const router = useRouter();
-  const [open, setOpen] = React.useState(false);
-
-  function confirmSignOut() {
-    void signOut();
-    router.push("/login");
-    router.refresh();
+  function toggleCollapsed() {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem(
+          SIDEBAR_COLLAPSED_STORAGE_KEY,
+          String(next)
+        );
+      } catch {
+        // Sin persistencia disponible: la preferencia solo dura la sesión.
+      }
+      return next;
+    });
   }
 
   return (
-    <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-full"
-        >
-          <LogOut className="h-4 w-4" />
-          Cerrar sesión
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>¿Cerrar sesión?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Volverás a la pantalla de acceso y tendrás que iniciar sesión de
-            nuevo para entrar.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction onClick={confirmSignOut}>
-            Cerrar sesión
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-
-/** Enlace de navegación, compartido por el sidebar y el panel lateral. */
-function NavLink({
-  item,
-  active,
-  onNavigate,
-}: {
-  item: NavItem;
-  active: boolean;
-  onNavigate?: () => void;
-}) {
-  const Icon = item.icon;
-  return (
-    <Link
-      href={item.href}
-      onClick={onNavigate}
-      aria-current={active ? "page" : undefined}
+    <aside
+      data-collapsed={collapsed}
       className={cn(
-        "flex shrink-0 items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-        active && "border-gold bg-primary font-medium text-primary-foreground"
+        "hidden shrink-0 border-r bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:flex-col lg:transition-[width] lg:duration-200",
+        collapsed ? "lg:w-[4.75rem]" : "lg:w-64"
       )}
     >
-      <Icon className="h-4 w-4 shrink-0" />
-      {item.label}
-    </Link>
+      <div
+        className={cn(
+          "flex items-center border-b px-2 py-3",
+          collapsed ? "flex-col gap-2" : "justify-between gap-2"
+        )}
+      >
+        <BrandMark collapsed={collapsed} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "Expandir menú lateral" : "Contraer menú lateral"}
+          aria-pressed={collapsed}
+          className="shrink-0"
+        >
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+          )}
+        </Button>
+      </div>
+
+      <SidebarNav items={items} pathname={pathname} collapsed={collapsed} />
+
+      <div className="border-t p-2">
+        <div className={cn(collapsed && "flex justify-center")}>
+          <UserSummary
+            name={name}
+            email={email}
+            roleLabel={ROLE_LABELS[role]}
+            collapsed={collapsed}
+          />
+        </div>
+        <div className={cn("mt-2", collapsed && "flex justify-center")}>
+          <SignOutButton compact={collapsed} />
+        </div>
+      </div>
+    </aside>
   );
 }

@@ -8,15 +8,17 @@ import {
 } from "@/lib/ui/command-palette";
 
 /**
- * Botón que abre la paleta de comandos (issue #19).
+ * Acceso a la búsqueda global (issue #19, reubicado al encabezado).
  *
  * Dos variantes, una por breakpoint, que llaman EXACTAMENTE a la misma acción
- * (`onOpen` → `openPalette`):
+ * (`onOpen` → `openPalette`), así que no hay una segunda búsqueda: ambas abren
+ * la misma paleta.
  *
- *  - `desktop`: botón con etiqueta «Buscar» y la pista `Ctrl K`. Vive en el
- *    sidebar, que solo se muestra a partir de `lg`.
- *  - `mobile`: botón táctil con solo el icono (nombre accesible «Buscar»). Vive
- *    en la barra superior, sin depender del teclado.
+ *  - `desktop`: botón compacto con el icono y la palabra «Buscar». Es el acceso
+ *    del encabezado en computadora. A propósito NO muestra la pista `Ctrl K`:
+ *    el atajo sigue funcionando en segundo plano, pero la interfaz queda limpia.
+ *  - `mobile`: botón táctil con solo el icono (nombre accesible «Buscar»), sin
+ *    depender del teclado.
  *
  * Es un componente de presentación sin hooks de Next, para poder verificarlo en
  * las pruebas renderizando el marcado.
@@ -36,7 +38,7 @@ export function CommandPaletteTrigger({
     return (
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         size="icon"
         onClick={onOpen}
         aria-label={trigger.ariaLabel}
@@ -56,15 +58,12 @@ export function CommandPaletteTrigger({
       aria-label={trigger.ariaLabel}
       data-command-palette-trigger={trigger.id}
       className={cn(
-        "w-full justify-start gap-2 font-normal text-muted-foreground",
+        "h-9 justify-start gap-2 rounded-full px-3.5 font-normal text-muted-foreground",
         className
       )}
     >
       <Search className="h-4 w-4" aria-hidden="true" />
       <span>{trigger.label}</span>
-      <kbd className="ml-auto rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-        Ctrl K
-      </kbd>
     </Button>
   );
 }

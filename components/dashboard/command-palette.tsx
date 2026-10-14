@@ -39,13 +39,19 @@ interface Command {
 /**
  * Paleta de comandos (issue #19).
  *
- * Se abre con Cmd/Ctrl+K, con el botón «Buscar» del sidebar (escritorio) o con
- * el botón de búsqueda de la barra superior (móvil). Los tres caminos abren esta
- * misma paleta: el estado de apertura y el atajo viven en
- * `CommandPaletteProvider`, no aquí. Permite saltar a cualquier sección permitida
- * por el rol, cambiar el tema o cerrar sesión sin usar el ratón. La navegación se
- * construye con los MISMOS `NAV_ITEMS` y roles que el sidebar, así que nunca
- * ofrece una ruta que el usuario no pueda abrir.
+ * Se abre con Cmd/Ctrl+K o con el acceso de búsqueda del encabezado
+ * (`DashboardTopBar`). Los caminos abren esta misma paleta: el estado de apertura
+ * y el atajo viven en `CommandPaletteProvider`, no aquí. Permite saltar a
+ * cualquier sección permitida por el rol, cambiar el tema o cerrar sesión sin
+ * usar el ratón. La navegación se construye con los MISMOS `NAV_ITEMS` y roles
+ * que el sidebar, así que nunca ofrece una ruta que el usuario no pueda abrir.
+ *
+ * Presentación responsive sin una segunda implementación:
+ *  - En móvil ocupa la parte superior a todo lo ancho, con un campo horizontal
+ *    claro (patrón de barra de búsqueda), cómodo de tocar.
+ *  - En pantallas grandes se centra como un panel cerca de la parte superior.
+ * El atajo `Escape` cierra el diálogo (lo aporta Radix) aunque la tecla ya no se
+ * anuncie en la interfaz.
  *
  * No añade dependencias: reutiliza el `Dialog` de Radix que ya tiene el
  * proyecto y gestiona el teclado y el foco a mano.
@@ -169,33 +175,32 @@ export function CommandPalette({ role }: { role: UserRole }) {
     >
       <DialogContent
         showCloseButton={false}
-        className="top-[48%] gap-0 overflow-hidden p-0 sm:max-w-lg"
+        className="top-0 left-0 w-full max-w-none translate-x-0 translate-y-0 gap-0 overflow-hidden rounded-none border-0 border-b p-0 sm:top-[12%] sm:left-[50%] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:translate-x-[-50%] sm:rounded-lg sm:border"
       >
         <DialogTitle className="sr-only">Paleta de comandos</DialogTitle>
         <DialogDescription className="sr-only">
           Busca una sección, cambia el tema o cierra sesión.
         </DialogDescription>
 
-        <div className="flex items-center gap-2 border-b px-3">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <input
-            ref={inputRef}
-            value={query}
-            onChange={(event) => {
-              setQuery(event.target.value);
-              setActiveIndex(0);
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="Buscar páginas y acciones…"
-            aria-label="Buscar páginas y acciones"
-            className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-          />
-          <kbd className="hidden shrink-0 rounded border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline-block">
-            Esc
-          </kbd>
+        <div className="border-b p-2 sm:p-0">
+          <div className="flex items-center gap-2 rounded-lg border bg-background px-3 sm:rounded-none sm:border-0">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                setActiveIndex(0);
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder="Buscar páginas y acciones…"
+              aria-label="Buscar páginas y acciones"
+              className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </div>
         </div>
 
-        <ul ref={listRef} className="max-h-80 overflow-y-auto p-2">
+        <ul ref={listRef} className="max-h-[60vh] overflow-y-auto p-2 sm:max-h-80">
           {filtered.length === 0 && (
             <li className="px-3 py-6 text-center text-sm text-muted-foreground">
               Sin resultados.

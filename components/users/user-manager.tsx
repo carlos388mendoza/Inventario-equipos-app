@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useTransition } from "react";
 import { toast } from "sonner";
+import { MoreHorizontal, Pencil, Trash2, UserCheck, UserX } from "lucide-react";
 import {
   createUserAction,
   deleteUserAction,
@@ -47,6 +48,14 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { MultiSelect } from "@/components/ui/multi-select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { AssignedRestaurantsSummary } from "@/components/restaurants/assigned-restaurants-summary";
 import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import {
   ROLES,
@@ -346,13 +355,15 @@ export function UserManager({
                         </Badge>
                       </td>
                       <td className="px-4 py-2 text-muted-foreground">
-                        {isTechnicianRole(asUserRole(u.role))
-                          ? u.assignedRestaurantIds.length > 0
-                            ? u.assignedRestaurantIds
-                                .map((id) => restaurantNameById.get(id) ?? id)
-                                .join(", ")
-                            : "Sin asignar"
-                          : u.restaurantName ?? "—"}
+                        {isTechnicianRole(asUserRole(u.role)) ? (
+                          <AssignedRestaurantsSummary
+                            names={u.assignedRestaurantIds.map(
+                              (id) => restaurantNameById.get(id) ?? id
+                            )}
+                          />
+                        ) : (
+                          u.restaurantName ?? "—"
+                        )}
                       </td>
                       <td className="px-4 py-2">
                         <Badge variant={u.active ? "default" : "secondary"}>
@@ -360,41 +371,57 @@ export function UserManager({
                         </Badge>
                       </td>
                       <td className="px-4 py-2 text-right">
-                        <div className="inline-flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEdit(u)}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Acciones para ${u.name}`}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            collisionPadding={8}
+                            className="w-44"
                           >
-                            Editar
-                          </Button>
-                          <Button
-                            variant={u.active ? "secondary" : "outline"}
-                            size="sm"
-                            disabled={submitting || isSelf}
-                            title={
-                              isSelf
-                                ? "No puedes cambiar el estado de tu propia cuenta"
-                                : undefined
-                            }
-                            onClick={() => requestToggle(u)}
-                          >
-                            {u.active ? "Desactivar" : "Activar"}
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={submitting || isSelf}
-                            title={
-                              isSelf
-                                ? "No puedes eliminar tu propia cuenta"
-                                : undefined
-                            }
-                            onClick={() => requestDelete(u)}
-                          >
-                            Eliminar
-                          </Button>
-                        </div>
+                            <DropdownMenuItem onSelect={() => openEdit(u)}>
+                              <Pencil className="h-4 w-4" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={submitting || isSelf}
+                              onSelect={() => requestToggle(u)}
+                              title={
+                                isSelf
+                                  ? "No puedes cambiar el estado de tu propia cuenta"
+                                  : undefined
+                              }
+                            >
+                              {u.active ? (
+                                <UserX className="h-4 w-4" />
+                              ) : (
+                                <UserCheck className="h-4 w-4" />
+                              )}
+                              {u.active ? "Desactivar" : "Activar"}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              disabled={submitting || isSelf}
+                              onSelect={() => requestDelete(u)}
+                              title={
+                                isSelf
+                                  ? "No puedes eliminar tu propia cuenta"
+                                  : undefined
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   );
