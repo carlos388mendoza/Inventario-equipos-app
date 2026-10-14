@@ -8,7 +8,7 @@ import { LogOut, MoreHorizontal } from "lucide-react";
 import { signOut } from "@/lib/auth/client";
 import { type NavItem } from "@/lib/navigation";
 import {
-  getPrimaryNavItems,
+  getInlineNavItems,
   getSecondaryNavItems,
   groupNavItems,
 } from "@/lib/ui/sidebar";
@@ -102,6 +102,16 @@ export function BrandMark({
   );
 }
 
+/**
+ * Clases de una sección de navegación. Las comparten los enlaces del sidebar y
+ * el botón de opciones secundarias (`…`), para que este último tenga EXACTAMENTE
+ * la misma alineación, ancho, alto y espaciado que el resto de secciones, tanto
+ * expandido como contraído.
+ */
+const NAV_ITEM_CLASS =
+  "flex w-full shrink-0 items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
+const NAV_ITEM_COLLAPSED_CLASS = "justify-center px-2";
+
 /** Enlace de navegación. En modo contraído muestra solo el icono, con tooltip. */
 export function NavLink({
   item,
@@ -122,8 +132,8 @@ export function NavLink({
       aria-current={active ? "page" : undefined}
       aria-label={collapsed ? item.label : undefined}
       className={cn(
-        "flex shrink-0 items-center gap-3 rounded-md border-l-2 border-transparent px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
-        collapsed && "justify-center px-2",
+        NAV_ITEM_CLASS,
+        collapsed && NAV_ITEM_COLLAPSED_CLASS,
         active && "border-gold bg-primary font-medium text-primary-foreground"
       )}
     >
@@ -147,10 +157,10 @@ export function NavLink({
 /**
  * Lista de navegación agrupada.
  *
- * Solo lista las secciones principales (las secundarias van al menú de tres
- * puntos). Con etiquetas (`collapsed` en falso) muestra los encabezados de grupo
- * para que el administrador no vea una lista plana y saturada. Contraída, oculta
- * los encabezados y los textos: solo iconos, con un separador entre grupos.
+ * Expandida lista TODAS las secciones visibles (principales y secundarias), como
+ * antes de agruparlas, para no esconder opciones cuando hay espacio. Contraída
+ * lista solo las principales (iconos, con tooltip) y deja las secundarias al
+ * menú `…` de la parte inferior, porque ahí no caben sus nombres.
  */
 export function SidebarNav({
   items,
@@ -163,7 +173,7 @@ export function SidebarNav({
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
-  const groups = groupNavItems(getPrimaryNavItems(items));
+  const groups = groupNavItems(getInlineNavItems(items, collapsed));
   const secondaryItems = getSecondaryNavItems(items);
   return (
     <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
@@ -211,16 +221,19 @@ export function SidebarNav({
 /**
  * Menú de opciones secundarias del sidebar (botón de tres puntos).
  *
- * Las secciones marcadas como `secondary` en `NAV_ITEMS` (configuración y
- * herramientas) no se listan en la navegación principal para no saturarla: se
- * ofrecen aquí. Es un `DropdownMenu` de Radix, así que se abre al pulsar el
- * botón y se cierra al elegir una opción, al pulsar fuera o con `Escape`
- * (ratón, teclado y táctil). Respeta los mismos grupos y permisos porque usa la
- * misma referencia de secciones ya filtrada por rol.
+ * Las secciones marcadas como `secondary` en `NAV_ITEMS` son las que ofrece este
+ * menú. El botón ocupa la parte inferior del sidebar y tiene EXACTAMENTE la
+ * misma alineación, ancho, altura y espaciado que el resto de los elementos de
+ * navegación, tanto expandido (icono + texto "Más opciones") como contraído
+ * (solo el icono, alineado igual que los demás).
  *
- * Contraído, el acceso se reduce al icono y conserva su nombre accesible, con
- * tooltip. Si el rol no tiene ninguna sección secundaria, no se dibuja nada (ni
- * botón ni menú vacío).
+ * Contraído, el acceso conserva su nombre accesible con tooltip. Expandido,
+ * cuando hay secciones secundarias visibles para el rol actual, estas también se
+ * listan directamente en la navegación (para no esconder opciones tras el menú),
+ * pero el botón de "Más opciones" sigue presente en la parte inferior, con su
+ * menú. Si el rol no tiene ninguna sección secundaria, no se dibuja nada (ni
+ * botón ni menú vacío). Respeta los mismos grupos y permisos, pues usa las
+ * secciones ya filtradas por rol.
  */
 export function SidebarSecondaryMenu({
   items,
@@ -235,34 +248,33 @@ export function SidebarSecondaryMenu({
   if (groups.length === 0) return null;
 
   const trigger = (
-    <Button
+    <button
       type="button"
-      variant="ghost"
-      size={collapsed ? "icon" : "sm"}
       aria-label="Más opciones"
-      className={cn(
-        "text-muted-foreground",
-        collapsed ? "mx-auto" : "w-full justify-start gap-3 px-3"
-      )}
+      className={cn(NAV_ITEM_CLASS, collapsed && NAV_ITEM_COLLAPSED_CLASS)}
     >
       <MoreHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
       {!collapsed && <span className="truncate">Más opciones</span>}
-    </Button>
+    </button>
+  );
+
+  const triggerNode = collapsed ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+      </TooltipTrigger>
+      <TooltipContent side="right">Más opciones</TooltipContent>
+    </Tooltip>
+  ) : (
+    <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
   );
 
   return (
     <div className="mt-1 border-t pt-2">
       <DropdownMenu>
-        {collapsed ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-            </TooltipTrigger>
-            <TooltipContent side="right">Más opciones</TooltipContent>
-          </Tooltip>
-        ) : (
-          <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-        )}
+        <ul className="flex flex-col gap-1">
+          <li>{triggerNode}</li>
+        </ul>
         <DropdownMenuContent
           side={collapsed ? "right" : "bottom"}
           align="start"

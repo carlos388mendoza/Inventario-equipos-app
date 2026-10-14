@@ -49,10 +49,11 @@ export interface NavItem {
   /**
    * Sección secundaria (configuración o herramientas de uso esporádico).
    *
-   * Las secundarias no se listan en la navegación principal del sidebar para no
-   * saturarla: se ofrecen desde el menú de tres puntos. Siguen existiendo en
-   * `NAV_ITEMS`, así que la paleta de búsqueda las encuentra igual y los permisos
-   * (`roles`) no cambian.
+   * Con el sidebar expandido se lista como cualquier otra sección, para no
+   * esconder opciones cuando hay espacio. Con el sidebar contraído, donde no
+   * caben sus nombres, se ofrecen desde el menú de tres puntos de la parte
+   * inferior. Siguen existiendo en `NAV_ITEMS`, así que la paleta de búsqueda
+   * las encuentra igual y los permisos (`roles`) no cambian.
    */
   secondary?: boolean;
 }

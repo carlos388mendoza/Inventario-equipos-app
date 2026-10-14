@@ -43,9 +43,27 @@ export function getPrimaryNavItems(items: readonly NavItem[]): NavItem[] {
 }
 
 /**
- * Secciones secundarias (configuración y herramientas). No se listan en la
- * navegación principal: se ofrecen desde el menú de tres puntos del sidebar.
+ * Secciones secundarias (configuración y herramientas). Son las que ofrece el
+ * menú de tres puntos del sidebar; con la barra contraída son la única vía de
+ * acceso a ellas.
  */
 export function getSecondaryNavItems(items: readonly NavItem[]): NavItem[] {
   return items.filter((item) => item.secondary === true);
+}
+
+/**
+ * Secciones que se listan DIRECTAMENTE en el sidebar (no dentro del menú `…`).
+ *
+ * - Expandido: todas las visibles (principales y secundarias), como antes de
+ *   agruparlas, para no esconder opciones tras un menú cuando hay espacio.
+ * - Contraído: solo las principales; las secundarias se ofrecen desde el menú
+ *   `…`, porque en modo icono no caben sus nombres.
+ *
+ * Nunca descarta ni duplica: es un reparto exacto de la lista recibida.
+ */
+export function getInlineNavItems(
+  items: readonly NavItem[],
+  collapsed: boolean
+): readonly NavItem[] {
+  return collapsed ? getPrimaryNavItems(items) : items;
 }
