@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Menu } from "lucide-react";
 import { signOut } from "@/lib/auth/client";
-import { NAV_ITEMS, type NavItem } from "@/lib/navigation";
+import { type NavItem } from "@/lib/navigation";
+import { getNavItemsForRole } from "@/lib/ui/command-palette";
 import { ROLE_LABELS, type UserRole } from "@/lib/db/enums";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { GrupoComidasMark } from "@/components/brand/grupo-comidas-mark";
+import { CommandPaletteTrigger } from "@/components/dashboard/command-palette-trigger";
+import { useCommandPalette } from "@/components/dashboard/command-palette-provider";
 
 /**
  * Navegación del dashboard.
@@ -39,6 +42,10 @@ import { GrupoComidasMark } from "@/components/brand/grupo-comidas-mark";
  * Las dos pinturas leen la MISMA lista filtrada por rol y el mismo `NAV_ITEMS`,
  * así que no hay opciones duplicadas ni una ruta que se pierda: la barra móvil
  * solo sustituye a la presentación.
+ *
+ * Cada pintura incluye además su botón de búsqueda (#19) —con etiqueta «Buscar»
+ * y `Ctrl K` en escritorio, solo icono en móvil— y los dos abren la misma paleta
+ * de comandos a través de `useCommandPalette`.
  */
 export function DashboardSidebar({
   role,
@@ -51,7 +58,8 @@ export function DashboardSidebar({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = React.useState(false);
-  const items = NAV_ITEMS.filter((item) => item.roles.includes(role));
+  const { openPalette } = useCommandPalette();
+  const items = getNavItemsForRole(role);
 
   // El panel se cierra al cambiar de ruta: si no, al navegar con el drawer
   // abierto seguiría tapando la página de destino. Se ajusta durante el render en
@@ -97,6 +105,11 @@ export function DashboardSidebar({
           </div>
         </div>
 
+        {/* Botón de búsqueda de escritorio (#19): abre la paleta de comandos. */}
+        <div className="px-2 pt-2">
+          <CommandPaletteTrigger variant="desktop" onOpen={openPalette} />
+        </div>
+
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
           {items.map((item) => (
             <NavLink key={item.href} item={item} active={isActiveRoute(item)} />
@@ -134,60 +147,64 @@ export function DashboardSidebar({
             </p>
           </div>
         </div>
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              aria-label="Abrir menú"
-              aria-expanded={open}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0">
-            <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-            <div className="flex items-center gap-2.5 border-b px-4 py-3">
-              <GrupoComidasMark size={36} />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold leading-tight">
-                  Inventario Equipos
-                </p>
-                <p className="truncate text-[11px] font-medium text-gold">
-                  Grupo Comidas
-                </p>
-              </div>
-            </div>
-
-            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
-              {items.map((item) => (
-                <NavLink
-                  key={item.href}
-                  item={item}
-                  active={isActiveRoute(item)}
-                  onNavigate={() => setOpen(false)}
-                />
-              ))}
-            </nav>
-
-            <div className="border-t p-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                  {initials}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {ROLE_LABELS[role]}
+        <div className="flex shrink-0 items-center gap-2">
+          {/* Botón de búsqueda móvil (#19): abre la misma paleta, sin teclado. */}
+          <CommandPaletteTrigger variant="mobile" onOpen={openPalette} />
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Abrir menú"
+                aria-expanded={open}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-72 p-0">
+              <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
+              <div className="flex items-center gap-2.5 border-b px-4 py-3">
+                <GrupoComidasMark size={36} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold leading-tight">
+                    Inventario Equipos
+                  </p>
+                  <p className="truncate text-[11px] font-medium text-gold">
+                    Grupo Comidas
                   </p>
                 </div>
               </div>
-              <div className="mt-3">
-                <SignOutButton />
+
+              <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
+                {items.map((item) => (
+                  <NavLink
+                    key={item.href}
+                    item={item}
+                    active={isActiveRoute(item)}
+                    onNavigate={() => setOpen(false)}
+                  />
+                ))}
+              </nav>
+
+              <div className="border-t p-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                    {initials}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {ROLE_LABELS[role]}
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <SignOutButton />
+                </div>
               </div>
-            </div>
-          </SheetContent>
-        </Sheet>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </>
   );

@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { LogOut, Monitor, Moon, Search, Sun } from "lucide-react";
 import { signOut } from "@/lib/auth/client";
-import { NAV_ITEMS } from "@/lib/navigation";
 import { type UserRole } from "@/lib/db/enums";
+import { getNavItemsForRole } from "@/lib/ui/command-palette";
 import { moveActiveIndex, resolveActiveIndex } from "@/lib/ui/roving-index";
 import { cn } from "@/lib/utils";
+import { useCommandPalette } from "@/components/dashboard/command-palette-provider";
 import {
   Dialog,
   DialogContent,
@@ -38,8 +39,11 @@ interface Command {
 /**
  * Paleta de comandos (issue #19).
  *
- * Se abre con Cmd/Ctrl+K y permite saltar a cualquier sección permitida por el
- * rol, cambiar el tema o cerrar sesión sin usar el ratón. La navegación se
+ * Se abre con Cmd/Ctrl+K, con el botón «Buscar» del sidebar (escritorio) o con
+ * el botón de búsqueda de la barra superior (móvil). Los tres caminos abren esta
+ * misma paleta: el estado de apertura y el atajo viven en
+ * `CommandPaletteProvider`, no aquí. Permite saltar a cualquier sección permitida
+ * por el rol, cambiar el tema o cerrar sesión sin usar el ratón. La navegación se
  * construye con los MISMOS `NAV_ITEMS` y roles que el sidebar, así que nunca
  * ofrece una ruta que el usuario no pueda abrir.
  *
@@ -49,16 +53,14 @@ interface Command {
 export function CommandPalette({ role }: { role: UserRole }) {
   const router = useRouter();
   const { setTheme } = useTheme();
-  const [open, setOpen] = React.useState(false);
+  const { open, setOpen } = useCommandPalette();
   const [query, setQuery] = React.useState("");
   const [activeIndex, setActiveIndex] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const listRef = React.useRef<HTMLUListElement>(null);
 
   const commands = React.useMemo<Command[]>(() => {
-    const navigation: Command[] = NAV_ITEMS.filter((item) =>
-      item.roles.includes(role)
-    ).map((item) => ({
+    const navigation: Command[] = getNavItemsForRole(role).map((item) => ({
       id: `nav:${item.href}`,
       label: item.label,
       section: "Navegación",
@@ -116,20 +118,8 @@ export function CommandPalette({ role }: { role: UserRole }) {
   const activeId =
     activePosition >= 0 ? filtered[activePosition]?.id : undefined;
 
-  // Atajo global Cmd/Ctrl+K. Se registra una sola vez y alterna la paleta.
-  React.useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (
-        event.key.toLowerCase() === "k" &&
-        (event.metaKey || event.ctrlKey)
-      ) {
-        event.preventDefault();
-        setOpen((previous) => !previous);
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  // Atajo global Cmd/Ctrl+K y estado de apertura: viven en
+  // `CommandPaletteProvider` para compartirlos con los botones de la interfaz.
 
   // Al abrir, el foco va al buscador para poder escribir de inmediato.
   React.useEffect(() => {

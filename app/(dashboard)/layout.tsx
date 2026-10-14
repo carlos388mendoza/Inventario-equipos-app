@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth/session";
 import { asUserRole } from "@/lib/db/enums";
 import { CommandPalette } from "@/components/dashboard/command-palette";
+import { CommandPaletteProvider } from "@/components/dashboard/command-palette-provider";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { TabSyncProvider } from "@/components/sync/tab-sync-provider";
 
@@ -26,18 +27,24 @@ export default async function DashboardLayout({
     // la columna superior la ocupa la barra con el botón de menú. `min-w-0` en
     // el contenido es lo que evita que una tabla ancha desborde horizontalmente
     // en móvil en vez de desplazarse dentro de su contenedor.
-    <div className="flex min-h-screen flex-col bg-background lg:flex-row">
-      <DashboardSidebar
-        role={role}
-        name={user.name}
-        email={user.email}
-      />
-      {/* Paleta de comandos (#19): Cmd/Ctrl+K desde cualquier página. */}
-      <CommandPalette role={role} />
-      <div className="mx-auto w-full min-w-0 max-w-7xl flex-1">
-        <TabSyncProvider />
-        {children}
+    //
+    // `CommandPaletteProvider` comparte el estado de la paleta (#19) entre el
+    // sidebar, la barra móvil y el propio diálogo, para que los botones de
+    // escritorio y de móvil abran exactamente la misma búsqueda.
+    <CommandPaletteProvider>
+      <div className="flex min-h-screen flex-col bg-background lg:flex-row">
+        <DashboardSidebar
+          role={role}
+          name={user.name}
+          email={user.email}
+        />
+        {/* Paleta de comandos (#19): Cmd/Ctrl+K, botón de escritorio y botón móvil. */}
+        <CommandPalette role={role} />
+        <div className="mx-auto w-full min-w-0 max-w-7xl flex-1">
+          <TabSyncProvider />
+          {children}
+        </div>
       </div>
-    </div>
+    </CommandPaletteProvider>
   );
 }
