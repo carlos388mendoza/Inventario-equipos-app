@@ -67,7 +67,9 @@ function StatCard({
             {label}
           </p>
           <p className="text-2xl font-bold tabular-nums">{value}</p>
-          <p className="truncate text-xs text-muted-foreground">{hint}</p>
+          <p className="whitespace-normal text-xs text-muted-foreground sm:truncate">
+            {hint}
+          </p>
         </div>
       </CardContent>
     </Card>
@@ -93,7 +95,7 @@ export default async function DashboardHomePage() {
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             icon={<Boxes className="h-5 w-5" />}
             label="Equipos"
@@ -257,9 +259,9 @@ export default async function DashboardHomePage() {
                   {summary.recentRequests.map((r) => (
                     <div
                       key={r.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border p-3"
+                      className="flex min-w-0 flex-col items-start gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div className="min-w-0">
+                      <div className="min-w-0 sm:flex-1">
                         <p className="truncate text-sm font-medium">
                           {r.equipmentTypeName}
                         </p>
@@ -279,7 +281,7 @@ export default async function DashboardHomePage() {
                       </div>
                       <Badge
                         variant={statusBadgeVariant(r.status)}
-                        className="shrink-0"
+                        className="max-w-full whitespace-normal text-left sm:shrink-0 sm:whitespace-nowrap"
                       >
                         {REQUEST_STATUS_LABELS[r.status]}
                       </Badge>

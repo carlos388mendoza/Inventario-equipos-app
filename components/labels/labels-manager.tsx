@@ -41,6 +41,7 @@ import { Printer } from "lucide-react";
 import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import { PrintPanel, type LabelPrintData } from "@/components/labels/print-panel";
 import { PrintQueue } from "@/components/labels/print-queue";
+import { LabelPreview } from "@/components/labels/label-preview";
 import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
 import { formatDate } from "@/lib/utils";
@@ -86,6 +87,10 @@ export function LabelsManager({
   const [rowToPrint, setRowToPrint] = React.useState<LabelPrintData | null>(
     null
   );
+  const [labelToPreview, setLabelToPreview] = React.useState<LabelDto | null>(
+    null
+  );
+  const [previewDate, setPreviewDate] = React.useState<Date | null>(null);
   // Selección para imprimir en lote. Guarda ids, no objetos: así un refresh del
   // router no puede dejar seleccionados datos viejos.
   const [selectedIds, setSelectedIds] = React.useState<ReadonlySet<string>>(
@@ -352,7 +357,17 @@ export function LabelsManager({
                       {formatDate(l.createdAt)}
                     </td>
                     <td className="px-4 py-2 text-right">
-<div className="inline-flex gap-2">
+                      <div className="inline-flex flex-wrap justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setLabelToPreview(l);
+                            setPreviewDate(new Date());
+                          }}
+                        >
+                          Vista previa
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -509,6 +524,42 @@ export function LabelsManager({
                   Cerrar
                 </Button>
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={labelToPreview !== null}
+        onOpenChange={(open) => {
+          if (!open) setLabelToPreview(null);
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Vista previa {labelToPreview?.assetCode ?? "de etiqueta"}
+            </DialogTitle>
+            <DialogDescription>
+              Vista del QR y el logo de esta etiqueta. La fecha actual se muestra como referencia.
+            </DialogDescription>
+          </DialogHeader>
+          {labelToPreview && (
+            <div className="space-y-2">
+              <LabelPreview
+                data={{
+                  qrDataUrl: labelToPreview.qrDataUrl,
+                  assetCode: labelToPreview.assetCode,
+                  typeName: labelToPreview.typeName,
+                  restaurantName: labelToPreview.restaurantName,
+                  restaurantLogo: labelToPreview.restaurantLogo,
+                  installationDate: labelToPreview.installationDate,
+                  createdAt: labelToPreview.createdAt,
+                }}
+              />
+              <p className="text-right text-xs text-muted-foreground">
+                Fecha actual: {formatDate(previewDate)}
+              </p>
             </div>
           )}
         </DialogContent>

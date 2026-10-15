@@ -20,6 +20,19 @@ export const restaurantInputSchema = z.object({
     .max(250, "La dirección no puede superar 250 caracteres")
     .optional()
     .or(z.literal("")),
+  logo: z
+    .string()
+    .trim()
+    .max(500, "La ruta del logo no puede superar 500 caracteres")
+    .refine(
+      (value) =>
+        value === "" ||
+        (value.startsWith("/") && !value.startsWith("//")) ||
+        /^https:\/\//i.test(value),
+      "Usa una ruta local o una URL HTTPS para el logo"
+    )
+    .optional()
+    .or(z.literal("")),
 });
 
 export type RestaurantInput = z.infer<typeof restaurantInputSchema>;

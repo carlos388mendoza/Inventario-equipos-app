@@ -51,6 +51,7 @@ export async function createRestaurant(
       name: parsed.name,
       code: parsed.code,
       address: parsed.address || null,
+      logo: parsed.logo || null,
       active: true,
       createdAt: now,
       updatedAt: now,
@@ -98,6 +99,7 @@ export async function updateRestaurant(
         name: parsed.name,
         code: parsed.code,
         address: parsed.address || null,
+        logo: parsed.logo || null,
         updatedAt: new Date(),
       })
       .where(eq(restaurants.id, id));

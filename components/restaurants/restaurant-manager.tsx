@@ -35,7 +35,7 @@ import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
 import { formatDate } from "@/lib/utils";
 
-const EMPTY_FORM = { name: "", code: "", address: "" };
+const EMPTY_FORM = { name: "", code: "", address: "", logo: "" };
 
 export function RestaurantManager({
   restaurants: initial,
@@ -66,6 +66,7 @@ const [form, setForm] = React.useState(EMPTY_FORM);
       name: restaurant.name,
       code: restaurant.code,
       address: restaurant.address ?? "",
+      logo: restaurant.logo ?? "",
     });
     setDialogOpen(true);
   }
@@ -304,6 +305,20 @@ return matchesQuery && matchesFilter;
                 maxLength={250}
                 rows={2}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="restaurant-logo">Logo</Label>
+              <Input
+                id="restaurant-logo"
+                type="text"
+                value={form.logo}
+                onChange={(e) => setForm((f) => ({ ...f, logo: e.target.value }))}
+                placeholder="https://… o /brands/logo.svg"
+                maxLength={500}
+              />
+              <p className="text-xs text-muted-foreground">
+                URL HTTPS o ruta desde la carpeta pública, por ejemplo /brands/logo.svg.
+              </p>
             </div>
             <DialogFooter>
               <DialogClose asChild>

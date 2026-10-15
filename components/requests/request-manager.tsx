@@ -316,21 +316,21 @@ const [submitting, startSubmit] = useTransition();
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
               <Input
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
                 aria-label="Creadas desde"
-                className="w-[160px]"
+                className="w-full sm:w-[160px]"
               />
-              <span className="text-muted-foreground">–</span>
+              <span className="hidden text-muted-foreground sm:inline">–</span>
               <Input
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
                 aria-label="Creadas hasta"
-                className="w-[160px]"
+                className="w-full sm:w-[160px]"
               />
             </div>
             {hasExtraFilters && (
