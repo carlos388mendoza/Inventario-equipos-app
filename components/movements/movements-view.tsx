@@ -75,7 +75,6 @@ const ALL = "__all__";
 /** Operaciones que pueden aplicarse a varios equipos en un solo lote. */
 const BATCH_TYPES: EquipmentMovementType[] = [
   EQUIPMENT_MOVEMENT_TYPES.TRANSFER,
-  EQUIPMENT_MOVEMENT_TYPES.PULL,
   EQUIPMENT_MOVEMENT_TYPES.LOAN_OUT,
 ];
 
@@ -87,10 +86,6 @@ const OPERATION_CARDS = [
   {
     title: "Copia",
     text: "Duplica los datos en un equipo nuevo, con código y serie propios.",
-  },
-  {
-    title: "Jalado",
-    text: "Trae el equipo de vuelta a una unidad. Queda registrado aparte del envío.",
   },
   {
     title: "Préstamo",
@@ -251,7 +246,7 @@ export function MovementsView({
             Movimientos de inventario
           </CardTitle>
           <CardDescription>
-            Traslada, copia, jala, presta, devuelve y sustituye equipos. Cada
+            Traslada, copia, presta, devuelve y sustituye equipos. Cada
             operación queda asentada en el libro con su origen, su destino y su
             motivo, y un traslado conserva la identidad del equipo: su código,
             su número de serie, su etiqueta y todo su historial.
@@ -290,11 +285,13 @@ export function MovementsView({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={ALL}>Todas las operaciones</SelectItem>
-                  {Object.values(EQUIPMENT_MOVEMENT_TYPES).map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {EQUIPMENT_MOVEMENT_TYPE_LABELS[type]}
-                    </SelectItem>
-                  ))}
+                  {Object.values(EQUIPMENT_MOVEMENT_TYPES)
+                    .filter((type) => type !== EQUIPMENT_MOVEMENT_TYPES.PULL)
+                    .map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {EQUIPMENT_MOVEMENT_TYPE_LABELS[type]}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

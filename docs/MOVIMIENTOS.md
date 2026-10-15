@@ -1,6 +1,6 @@
 # Movimientos de inventario
 
-Documento para usuario técnico. Explica los siete flujos, qué hace cada uno y
+Documento para usuario técnico. Explica los seis flujos, qué hace cada uno y
 qué decide el servidor frente a lo que decide la interfaz.
 
 ---
@@ -28,33 +28,31 @@ dueño, y la devolución lo manda a casa sin ambigüedad.
 
 ---
 
-## 2. Los siete flujos
+## 2. Los flujos
 
-El sistema registra **6 tipos** en `equipment_movements` y ofrece **7 operaciones**,
-porque el archivado es una baja y no un cambio de ubicación.
+El sistema registra **6 tipos** en `equipment_movements` (incluido el histórico
+`PULL`) y ofrece **6 operaciones**, porque el archivado es una baja y no un cambio
+de ubicación.
+
+> El **jalado** (`PULL`) dejó de ofrecerse como operación nueva. Su tipo y su
+> etiqueta se conservan para poder mostrar el historial registrado antes de su
+> retirada, pero ya no aparece en los selectores ni se acepta al crear movimientos.
 
 | # | Operación | Tipo | Crea equipo | Cambia propietario | Lote | Efecto |
 |---|---|---|:--:|:--:|:--:|---|
 | 1 | Traslado | `TRANSFER` | No | Sí | Sí | El equipo pasa a ser del destino. |
-| 2 | Jalado | `PULL` | No | Sí | Sí | Mismo efecto sobre la ubicación, distinto propósito. |
-| 3 | Préstamo | `LOAN_OUT` | No | **No** | Sí | El equipo sale a otra unidad y sigue siendo del dueño. |
-| 4 | Devolución | `LOAN_RETURN` | No | Se restablece | Sí | Vuelve al propietario. |
-| 5 | Copia | `COPY` | **Sí** | Sí | No | Equipo nuevo con los mismos datos. |
-| 6 | Sustitución | `REPLACEMENT` | **Sí** | Sí | No | El sustituido queda fuera de servicio. |
-| 7 | Archivado | *(no es movimiento)* | No | No | No | Pasa a `RETIRED` con motivo en el historial. |
+| 2 | Préstamo | `LOAN_OUT` | No | **No** | Sí | El equipo sale a otra unidad y sigue siendo del dueño. |
+| 3 | Devolución | `LOAN_RETURN` | No | Se restablece | Sí | Vuelve al propietario. |
+| 4 | Copia | `COPY` | **Sí** | Sí | No | Equipo nuevo con los mismos datos. |
+| 5 | Sustitución | `REPLACEMENT` | **Sí** | Sí | No | El sustituido queda fuera de servicio. |
+| 6 | Archivado | *(no es movimiento)* | No | No | No | Pasa a `RETIRED` con motivo en el historial. |
 
 ### 1. Traslado (`TRANSFER`)
 
 El equipo pasa a ser de la unidad destino. Conserva identidad, número de serie,
 etiqueta e historial. Es la operación más común y admite lote.
 
-### 2. Jalado (`PULL`)
-
-El efecto sobre la ubicación es un traslado. Se registra aparte para poder
-distinguir *"lo traje de vuelta"* de *"lo mandé"*, que es información real de
-operación. Si el equipo estaba en préstamo, la devolución la hace el propietario.
-
-### 3. Préstamo (`LOAN_OUT`)
+### 2. Préstamo (`LOAN_OUT`)
 
 El equipo sale temporalmente a otra unidad. **No deja de pertenecer a su
 propietario**, así que la devolución lo devuelve a casa. Admite lote.
@@ -62,7 +60,7 @@ propietario**, así que la devolución lo devuelve a casa. Admite lote.
 Estados permitidos: `ACTIVE`, `DAMAGED`, `MAINTENANCE`. No se presta un equipo
 retirado ni uno ya sustituido.
 
-### 4. Devolución (`LOAN_RETURN`)
+### 3. Devolución (`LOAN_RETURN`)
 
 El equipo vuelve a su unidad propietaria y `ownerRestaurantId` vuelve a `NULL`.
 Solo tiene sentido sobre un equipo en préstamo; por eso en la interfaz el botón
@@ -70,7 +68,7 @@ de devolución **sustituye** al de mover cuando el equipo está prestado, y copi
 o sustituir aparecen deshabilitados con la explicación "devuelve el equipo antes
 de…".
 
-### 5. Copia (`COPY`)
+### 4. Copia (`COPY`)
 
 Se crea un equipo **nuevo** con los mismos datos. El original no se mueve y
 conserva su número de serie y su etiqueta. La copia necesita **código y serie
@@ -79,14 +77,14 @@ propios**, y el servidor comprueba que el código esté libre antes de escribir.
 El linaje se guarda en `equipment.originEquipmentId`, y el origen queda
 registrado como `counterpartEquipmentId` en el movimiento.
 
-### 6. Sustitución (`REPLACEMENT`)
+### 5. Sustitución (`REPLACEMENT`)
 
 Un equipo entra a sustituir a otro. El sustituido queda fuera de servicio y
 enlazado con su sustituto mediante `replacedByEquipmentId`; el nuevo hereda los
 datos del antiguo. El movimiento registra el par en
 `equipmentId` / `counterpartEquipmentId`.
 
-### 7. Archivado
+### 6. Archivado
 
 No es un movimiento: **no escribe en `equipment_movements`**. Pone el equipo en
 `RETIRED` y anota el motivo en `equipment_history`.
@@ -103,7 +101,7 @@ No es un séptimo tipo: es **la misma operación aplicada a varios equipos**. To
 los movimientos comparten un `batchId`, de modo que "moví 12 equipos a la vez" es
 una sola entrada consultable en el libro.
 
-Tipos que admiten lote: `TRANSFER`, `PULL`, `LOAN_OUT`, `LOAN_RETURN`.
+Tipos que admiten lote: `TRANSFER`, `LOAN_OUT`.
 `COPY` y `REPLACEMENT` no, porque crean un equipo por equipo y necesitan datos
 propios (código, serie, destino) que no tienen sentido agrupar.
 
@@ -117,7 +115,7 @@ persona vea el efecto antes de confirmar.
 
 | | ADMIN | IT_MANAGER | RESTAURANT_USER |
 |---|:--:|:--:|:--:|
-| Traslado, jalado, préstamo, devolución, copia, sustitución | ✅ | ✅ | ❌ |
+| Traslado, préstamo, devolución, copia, sustitución | ✅ | ✅ | ❌ |
 | Archivo masivo | ✅ | ✅ | ❌ |
 | Archivado | ✅ | ✅ | ❌ |
 | Ver el libro de movimientos | ✅ | ✅ | ❌ |
@@ -224,7 +222,7 @@ su ubicación actual, o puede no haber otras unidades disponibles. El mensaje de
 la acción dice cuál de esas es.
 
 **¿Se puede deshacer un traslado?**
-No hay acción de "revertir". Se hace un traslado o un jalado en sentido contrario,
+No hay acción de "revertir". Se hace un traslado en sentido contrario,
 que queda registrado como un movimiento nuevo. Un libro de movimientos es un
 registro de hechos, no una pila de operaciones que se puedan anular.
 

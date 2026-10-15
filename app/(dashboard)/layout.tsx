@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth/session";
 import { asUserRole } from "@/lib/db/enums";
 import { CommandPalette } from "@/components/dashboard/command-palette";
 import { CommandPaletteProvider } from "@/components/dashboard/command-palette-provider";
+import { DashboardBottomNav } from "@/components/dashboard/bottom-nav";
 import { DashboardSidebar } from "@/components/dashboard/sidebar";
 import { DashboardTopBar } from "@/components/dashboard/top-bar";
 import { TabSyncProvider } from "@/components/sync/tab-sync-provider";
@@ -47,11 +48,15 @@ export default async function DashboardLayout({
             name={user.name}
             email={user.email}
           />
-          <div className="mx-auto w-full min-w-0 max-w-7xl flex-1">
+          {/* `pb` reserva el alto de la barra inferior (móvil/tablet) más el
+              área segura, para que no tape el final del contenido; en `lg` la
+              barra no existe y no se reserva nada. */}
+          <div className="mx-auto w-full min-w-0 max-w-7xl flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-0">
             <TabSyncProvider />
             {children}
           </div>
         </div>
+        <DashboardBottomNav role={role} />
       </div>
     </CommandPaletteProvider>
   );

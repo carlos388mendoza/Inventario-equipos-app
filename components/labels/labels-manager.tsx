@@ -36,9 +36,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { MultiSelect } from "@/components/ui/multi-select";
 import { Printer } from "lucide-react";
 import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
-import { LabelPreview } from "@/components/labels/label-preview";
 import { PrintPanel, type LabelPrintData } from "@/components/labels/print-panel";
 import { PrintQueue } from "@/components/labels/print-queue";
 import { SortableHeader, useTableSort } from "@/components/ui/sortable";
@@ -77,9 +77,12 @@ export function LabelsManager({
   equipmentOptions: LabelEquipmentOption[];
 }) {
   const [restaurantId, setRestaurantId] = React.useState("");
-  const [equipmentId, setEquipmentId] = React.useState("");
+  const [equipmentIds, setEquipmentIds] = React.useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  const [result, setResult] = React.useState<GenerateLabelResult | null>(null);
+  // Etiquetas recién generadas en el diálogo, listas para imprimir en lote.
+  const [generated, setGenerated] = React.useState<LabelPrintData[] | null>(
+    null
+  );
   const [rowToPrint, setRowToPrint] = React.useState<LabelPrintData | null>(
     null
   );
@@ -88,6 +91,9 @@ export function LabelsManager({
   const [selectedIds, setSelectedIds] = React.useState<ReadonlySet<string>>(
     () => new Set()
   );
+  // Etiquetas que se van a enviar a la cola: pueden venir de la selección de la
+  // tabla o de un lote recién generado.
+  const [queueLabels, setQueueLabels] = React.useState<LabelPrintData[]>([]);
   const [queueOpen, setQueueOpen] = React.useState(false);
   const { sort, toggle, sortRows } = useTableSort();
 
@@ -146,21 +152,38 @@ export function LabelsManager({
 
   function openDialog() {
     setRestaurantId("");
-    setEquipmentId("");
-    setResult(null);
+    setEquipmentIds([]);
+    setGenerated(null);
     setDialogOpen(true);
   }
 
   function handleGenerate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const ids = equipmentIds;
     startSubmit(async () => {
-      const res = await generateSecurityLabel({ equipmentId });
-      setResult(res);
-      if (!res.ok) {
-        toast.error(res.error ?? "No se pudo generar la etiqueta.");
+      // Se genera una etiqueta por equipo seleccionado: mismo restaurante, un
+      // solo gesto. Cada equipo conserva su propio token y su propio QR.
+      const results = await Promise.all(
+        ids.map((id) => generateSecurityLabel({ equipmentId: id }))
+      );
+      const ok = results
+        .filter(
+          (r): r is Extract<GenerateLabelResult, { ok: true }> => r.ok
+        )
+        .map(toPrintData);
+      setGenerated(ok);
+      if (ok.length === 0) {
+        toast.error("No se pudo generar ninguna etiqueta.");
         return;
       }
-      toast.success("Etiqueta generada.");
+      const failed = results.length - ok.length;
+      if (failed > 0) {
+        toast.warning(
+          `Se generaron ${ok.length} etiqueta(s); ${failed} no se pudieron generar.`
+        );
+      } else {
+        toast.success(`${ok.length} etiqueta(s) generada(s).`);
+      }
       // La server action ya devuelve el RSC actualizado de esta ruta, así que
       // aquí solo se avisa al resto de pestañas. El contador de "Etiquetas QR"
       // del panel se actualiza sin F5.
@@ -207,7 +230,10 @@ export function LabelsManager({
             </Button>
             <Button
               size="sm"
-              onClick={() => setQueueOpen(true)}
+              onClick={() => {
+                setQueueLabels(queuedLabels);
+                setQueueOpen(true);
+              }}
               disabled={selectedIds.size === 0}
             >
               <Printer />
@@ -368,11 +394,17 @@ export function LabelsManager({
               sensibles.
             </DialogDescription>
           </DialogHeader>
-          {!result?.ok && (
+          {!generated && (
             <form onSubmit={handleGenerate} className="space-y-4">
               <div className="space-y-2">
                 <Label>Restaurante</Label>
-                <Select value={restaurantId} onValueChange={setRestaurantId}>
+                <Select
+                  value={restaurantId}
+                  onValueChange={(value) => {
+                    setRestaurantId(value);
+                    setEquipmentIds([]);
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecciona un restaurante" />
                   </SelectTrigger>
@@ -386,29 +418,26 @@ export function LabelsManager({
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Equipo</Label>
-                <Select
-                  value={equipmentId}
-                  onValueChange={setEquipmentId}
+                <Label>Equipos</Label>
+                <MultiSelect
+                  options={candidateEquipment.map((e) => ({
+                    value: e.id,
+                    label: e.assetCode,
+                  }))}
+                  selected={equipmentIds}
+                  onChange={setEquipmentIds}
                   disabled={candidateEquipment.length === 0}
-                >
-                  <SelectTrigger>
-                    <SelectValue
-                      placeholder={
-                        candidateEquipment.length === 0
-                          ? "Selecciona primero un restaurante"
-                          : "Selecciona el equipo"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {candidateEquipment.map((e) => (
-                      <SelectItem key={e.id} value={e.id}>
-                        {e.assetCode}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder={
+                    candidateEquipment.length === 0
+                      ? "Selecciona primero un restaurante"
+                      : "Selecciona uno o varios equipos"
+                  }
+                  searchPlaceholder="Buscar equipo…"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Puedes elegir varios equipos del mismo restaurante: se genera
+                  una etiqueta para cada uno.
+                </p>
               </div>
               <div className="flex justify-end gap-2">
                 <Button
@@ -419,39 +448,57 @@ export function LabelsManager({
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={submitting || !equipmentId}>
-                  {submitting ? "Generando…" : "Generar"}
+                <Button
+                  type="submit"
+                  disabled={submitting || equipmentIds.length === 0}
+                >
+                  {submitting
+                    ? "Generando…"
+                    : equipmentIds.length > 1
+                      ? `Generar ${equipmentIds.length}`
+                      : "Generar"}
                 </Button>
               </div>
             </form>
           )}
 
-          {result?.ok && (
+          {generated && (
             <div className="space-y-4">
-              <LabelPreview
-                data={{
-                  qrDataUrl: result.qrDataUrl,
-                  assetCode: result.assetCode,
-                  typeName: result.typeName,
-                  restaurantName: result.restaurantName,
-                  restaurantLogo: result.restaurantLogo,
-                  installationDate: result.installationDate,
-                  createdAt: result.createdAt,
-                }}
-              />
+              <p className="text-sm text-muted-foreground">
+                {generated.length} etiqueta(s) generada(s). Puedes imprimirlas
+                todas juntas o una por una.
+              </p>
+              <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2 text-sm">
+                {generated.map((label) => (
+                  <li
+                    key={`${label.assetCode}-${label.url}`}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span className="font-mono text-xs">{label.assetCode}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setRowToPrint(label)}
+                    >
+                      <Printer />
+                      Imprimir
+                    </Button>
+                  </li>
+                ))}
+              </ul>
               <div className="flex flex-wrap justify-end gap-2">
-                <Button asChild variant="outline" size="sm">
-                  <a href={result.url} target="_blank" rel="noreferrer">
-                    Abrir página pública
-                  </a>
-                </Button>
                 <Button
                   type="button"
                   size="sm"
-                  onClick={() => setRowToPrint(toPrintData(result))}
+                  onClick={() => {
+                    setQueueLabels(generated);
+                    setDialogOpen(false);
+                    setQueueOpen(true);
+                  }}
                 >
                   <Printer />
-                  Imprimir
+                  Imprimir {generated.length} etiqueta(s)
                 </Button>
                 <Button
                   type="button"
@@ -498,13 +545,13 @@ export function LabelsManager({
           <DialogHeader>
             <DialogTitle>Imprimir varias etiquetas</DialogTitle>
             <DialogDescription>
-              Se enviarán {queuedLabels.length} etiqueta(s) a la Zebra ZD230 a
+              Se enviarán {queueLabels.length} etiqueta(s) a la Zebra ZD230 a
               través de Zebra Browser Print, en el orden de la tabla. Cada
               etiqueta conserva su propio QR. El envío no es automático: revisa
               el progreso antes de cerrar.
             </DialogDescription>
           </DialogHeader>
-          {queueOpen && <PrintQueue labels={queuedLabels} />}
+          {queueOpen && <PrintQueue labels={queueLabels} />}
         </DialogContent>
       </Dialog>
     </div>

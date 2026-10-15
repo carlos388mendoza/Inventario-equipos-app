@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNotNull, max } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   equipment,
@@ -146,6 +146,52 @@ export async function listRequestHistory(
     .leftJoin(userTable, eq(requestHistory.userId, userTable.id))
     .where(eq(requestHistory.requestId, requestId))
     .orderBy(desc(requestHistory.createdAt));
+}
+
+export interface EquipmentAreaChange {
+  destinationArea: string;
+  total: number;
+  lastChangeAt: Date;
+}
+
+/**
+ * Cambios de área registrados para un equipo (issue #28).
+ *
+ * No existe una tabla de historial de áreas: el área vive en la solicitud de
+ * reemplazo (`equipment_requests.destinationArea`). Por eso el conteo y el
+ * desglose se derivan de las solicitudes cuyo `currentEquipmentId` es este
+ * equipo, sin necesidad de migración. Se agrupa por área para ver cuántas veces
+ * se ha movido a cada una y cuándo fue la última.
+ */
+export async function listEquipmentAreaChanges(
+  equipmentId: string
+): Promise<EquipmentAreaChange[]> {
+  const rows = await db
+    .select({
+      destinationArea: equipmentRequests.destinationArea,
+      total: count(),
+      lastChangeAt: max(equipmentRequests.createdAt),
+    })
+    .from(equipmentRequests)
+    .where(
+      and(
+        eq(equipmentRequests.currentEquipmentId, equipmentId),
+        isNotNull(equipmentRequests.destinationArea)
+      )
+    )
+    .groupBy(equipmentRequests.destinationArea)
+    .orderBy(desc(count()));
+
+  return rows
+    .filter(
+      (row): row is typeof row & { destinationArea: string } =>
+        row.destinationArea !== null
+    )
+    .map((row) => ({
+      destinationArea: row.destinationArea,
+      total: row.total,
+      lastChangeAt: row.lastChangeAt ?? new Date(0),
+    }));
 }
 
 /**

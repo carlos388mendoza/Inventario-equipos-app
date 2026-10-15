@@ -65,10 +65,13 @@ export type MovementActionResult =
  * movimientos que lo mencionan se pierden nunca.
  */
 
-/** Tipos que un usuario puede lanzar. Lo declarado en el enum, sin excepción. */
+/**
+ * Tipos que un usuario puede lanzar. El "jalado" (PULL) queda fuera: ya no se
+ * ofrece como operación nueva, aunque el tipo y su etiqueta se conservan para
+ * poder mostrar el historial registrado antes de su retirada.
+ */
 const ALLOWED_MOVEMENT_TYPES: EquipmentMovementType[] = [
   EQUIPMENT_MOVEMENT_TYPES.TRANSFER,
-  EQUIPMENT_MOVEMENT_TYPES.PULL,
   EQUIPMENT_MOVEMENT_TYPES.COPY,
   EQUIPMENT_MOVEMENT_TYPES.LOAN_OUT,
   EQUIPMENT_MOVEMENT_TYPES.LOAN_RETURN,
@@ -362,7 +365,6 @@ export async function bulkMoveEquipment(
     // Lote solo tiene sentido para los movimientos marcados como tales.
     const batchable: EquipmentMovementType[] = [
       EQUIPMENT_MOVEMENT_TYPES.TRANSFER,
-      EQUIPMENT_MOVEMENT_TYPES.PULL,
       EQUIPMENT_MOVEMENT_TYPES.LOAN_OUT,
     ];
     if (!batchable.includes(parsed.type)) {

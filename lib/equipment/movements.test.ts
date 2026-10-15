@@ -59,10 +59,9 @@ describe("catálogo de movimientos", () => {
     );
   });
 
-  it("ofrece lote para traslado, jalado y préstamo, no para copia ni sustitución", () => {
+  it("ofrece lote para traslado y préstamo, no para copia ni sustitución", () => {
     expect(BATCH_MOVEMENTS).toEqual([
       EQUIPMENT_MOVEMENT_TYPES.TRANSFER,
-      EQUIPMENT_MOVEMENT_TYPES.PULL,
       EQUIPMENT_MOVEMENT_TYPES.LOAN_OUT,
     ]);
     for (const type of BATCH_MOVEMENTS) {
@@ -130,11 +129,13 @@ describe("checkLocationChange", () => {
 
   it("no traslada un equipo prestado, para que la devolución quede registrada", () => {
     const loaned = equipment({ restaurantId: "rest-b", ownerRestaurantId: "rest-a" });
-    for (const type of [EQUIPMENT_MOVEMENT_TYPES.TRANSFER, EQUIPMENT_MOVEMENT_TYPES.PULL]) {
-      const result = checkLocationChange(loaned, type, "rest-c");
-      expect(result.ok).toBe(false);
-      expect(result.error).toContain("Devolución");
-    }
+    const result = checkLocationChange(
+      loaned,
+      EQUIPMENT_MOVEMENT_TYPES.TRANSFER,
+      "rest-c"
+    );
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("Devolución");
   });
 
   it("no presta un equipo ya prestado", () => {

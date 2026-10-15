@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { EQUIPMENT_MOVEMENT_TYPES, ROLES } from "@/lib/db/enums";
 import { canAccessGlobal, isAdmin, isItManager } from "@/lib/auth/session";
+import { BATCH_MOVEMENTS, SINGLE_EQUIPMENT_MOVEMENTS } from "@/lib/equipment/movements";
 
 /**
  * Autorización de las acciones de movimientos.
@@ -127,17 +128,19 @@ describe("ADMIN e IT_MANAGER pasan la puerta del rol", () => {
 });
 
 describe("tipos de movimiento permitidos", () => {
-  it("cubre los seis tipos del enum y ninguno más", () => {
-    // La lista de `ALLOWED_MOVEMENT_TYPES` es la superficie real: un tipo
-    // inventado por el cliente tiene que rechazarse.
-    const permitidos = [
-      EQUIPMENT_MOVEMENT_TYPES.TRANSFER,
-      EQUIPMENT_MOVEMENT_TYPES.PULL,
-      EQUIPMENT_MOVEMENT_TYPES.COPY,
-      EQUIPMENT_MOVEMENT_TYPES.LOAN_OUT,
-      EQUIPMENT_MOVEMENT_TYPES.LOAN_RETURN,
-      EQUIPMENT_MOVEMENT_TYPES.REPLACEMENT,
-    ];
-    expect(new Set(permitidos).size).toBe(6);
+  it("conserva el enum completo, incluido PULL, para el historial", () => {
+    expect(new Set(Object.values(EQUIPMENT_MOVEMENT_TYPES)).size).toBe(6);
+    expect(Object.values(EQUIPMENT_MOVEMENT_TYPES)).toContain(
+      EQUIPMENT_MOVEMENT_TYPES.PULL
+    );
+  });
+
+  it("retira PULL de la superficie que se ofrece al usuario", () => {
+    // El "jalado" ya no se ofrece como operación nueva, ni individual ni en
+    // lote, aunque su tipo y etiqueta se mantengan para leer el historial.
+    expect(SINGLE_EQUIPMENT_MOVEMENTS).not.toContain(
+      EQUIPMENT_MOVEMENT_TYPES.PULL
+    );
+    expect(BATCH_MOVEMENTS).not.toContain(EQUIPMENT_MOVEMENT_TYPES.PULL);
   });
 });

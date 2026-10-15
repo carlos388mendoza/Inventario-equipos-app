@@ -72,7 +72,6 @@ type Operation = "MOVE" | "COPY" | "REPLACE";
 /** Operaciones de ubicación que se ofrecen sobre un equipo no prestado. */
 const LOCATION_TYPES: EquipmentMovementType[] = [
   EQUIPMENT_MOVEMENT_TYPES.TRANSFER,
-  EQUIPMENT_MOVEMENT_TYPES.PULL,
   EQUIPMENT_MOVEMENT_TYPES.LOAN_OUT,
 ];
 

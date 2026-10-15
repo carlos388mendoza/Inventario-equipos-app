@@ -110,7 +110,7 @@ export default async function DashboardHomePage() {
             icon={<History className="h-5 w-5" />}
             label="Históricas"
             value={summary.closedRequests}
-            hint="rechazadas, completadas o canceladas"
+            hint="rechazadas, listas para recolección o canceladas"
           />
           <StatCard
             icon={<QrCode className="h-5 w-5" />}

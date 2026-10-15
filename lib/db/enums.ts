@@ -158,7 +158,7 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   IN_REVIEW: "En revisión",
   APPROVED: "Aprobada",
   REJECTED: "Rechazada",
-  COMPLETED: "Completada",
+  COMPLETED: "Listo en oficina para recolección",
   CANCELLED: "Cancelada",
 };
 

@@ -1,12 +1,13 @@
 import {
   requestsRankingByRestaurant,
+  requestsRankingByTechnician,
   equipmentWithType,
 } from "@/lib/db/queries/stats";
+import { ROLE_LABELS, ROLES } from "@/lib/db/enums";
 import { requireRole } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { restaurants } from "@/lib/db/schema";
 import { computeLifecycle } from "@/lib/equipment/lifecycle";
-import { ROLES } from "@/lib/db/enums";
 import { StatsAgentChat } from "@/components/statistics/stats-agent-chat";
 import {
   Card,
@@ -42,11 +43,13 @@ interface TypeSummary {
 export default async function StatisticsPage() {
   await requireRole(ROLES.ADMIN, ROLES.IT_MANAGER);
 
-  const [ranking, equiposConTipo, restaurantRows] = await Promise.all([
-    requestsRankingByRestaurant(),
-    equipmentWithType(),
-    db.select().from(restaurants),
-  ]);
+  const [ranking, technicianRanking, equiposConTipo, restaurantRows] =
+    await Promise.all([
+      requestsRankingByRestaurant(),
+      requestsRankingByTechnician(),
+      equipmentWithType(),
+      db.select().from(restaurants),
+    ]);
 
   const restaurantMap = new Map(restaurantRows.map((r) => [r.id, r]));
 
@@ -88,6 +91,10 @@ export default async function StatisticsPage() {
   const maxRequests = Math.max(
     0,
     ...ranking.map((r) => r.totalRequests)
+  );
+  const maxTechnicianRequests = Math.max(
+    0,
+    ...technicianRanking.map((t) => t.totalRequests)
   );
   const totalEquipment = equiposConTipo.length;
 
@@ -142,6 +149,49 @@ export default async function StatisticsPage() {
                       </span>
                     </span>
                     <Badge variant="secondary">{r.totalRequests}</Badge>
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Ranking de técnicos por solicitudes</CardTitle>
+              <CardDescription>
+                Técnicos y jefes de técnicos ordenados por cuántas solicitudes
+                de equipo han registrado.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {technicianRanking.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Ningún técnico ha registrado solicitudes todavía.
+                </p>
+              )}
+              <ol className="space-y-2">
+                {technicianRanking.map((t, index) => (
+                  <li key={t.userId} className="flex items-center gap-3">
+                    <span className="w-5 text-right text-sm font-medium text-muted-foreground">
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className="truncate font-medium">{t.userName}</span>
+                        <Badge variant="outline">
+                          {ROLE_LABELS[t.role]}
+                        </Badge>
+                      </span>
+                      <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-muted">
+                        <span
+                          className="block h-full rounded-full bg-primary"
+                          style={{
+                            width: `${(t.totalRequests / maxTechnicianRequests) * 100}%`,
+                          }}
+                        />
+                      </span>
+                    </span>
+                    <Badge variant="secondary">{t.totalRequests}</Badge>
                   </li>
                 ))}
               </ol>

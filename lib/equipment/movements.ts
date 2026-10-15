@@ -222,7 +222,6 @@ export function movementDefinition(
 /** Movimientos que la interfaz puede lanzar sobre UN equipo existente. */
 export const SINGLE_EQUIPMENT_MOVEMENTS: EquipmentMovementType[] = [
   EQUIPMENT_MOVEMENT_TYPES.TRANSFER,
-  EQUIPMENT_MOVEMENT_TYPES.PULL,
   EQUIPMENT_MOVEMENT_TYPES.COPY,
   EQUIPMENT_MOVEMENT_TYPES.LOAN_OUT,
   EQUIPMENT_MOVEMENT_TYPES.REPLACEMENT,
@@ -231,7 +230,6 @@ export const SINGLE_EQUIPMENT_MOVEMENTS: EquipmentMovementType[] = [
 /** Movimientos disponibles sobre una selección de varios equipos. */
 export const BATCH_MOVEMENTS: EquipmentMovementType[] = [
   EQUIPMENT_MOVEMENT_TYPES.TRANSFER,
-  EQUIPMENT_MOVEMENT_TYPES.PULL,
   EQUIPMENT_MOVEMENT_TYPES.LOAN_OUT,
 ];
 

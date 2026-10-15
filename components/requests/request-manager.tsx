@@ -41,6 +41,7 @@ import {
   ACTIVE_REQUEST_STATUS,
   CLOSED_REQUEST_STATUS,
   ALL_REQUEST_STATUS,
+  ALL_REQUEST_PRIORITY,
   REQUEST_PRIORITY_LABELS,
   REQUEST_STATUS_LABELS,
   formatDestinationArea,
@@ -88,6 +89,11 @@ export function RequestManager({
   const [tab, setTab] = React.useState<"active" | "history">("active");
   const [query, setQuery] = React.useState("");
   const [restaurantId, setRestaurantId] = React.useState("ALL");
+  const [statusFilter, setStatusFilter] = React.useState("ALL");
+  const [priorityFilter, setPriorityFilter] = React.useState("ALL");
+  const [typeFilter, setTypeFilter] = React.useState("ALL");
+  const [dateFrom, setDateFrom] = React.useState("");
+  const [dateTo, setDateTo] = React.useState("");
   const [createOpen, setCreateOpen] = React.useState(false);
   const [statusTarget, setStatusTarget] = React.useState<RequestDto | null>(
     null
@@ -102,19 +108,55 @@ const [submitting, startSubmit] = useTransition();
   const isGlobalFilter = restaurantOptions.length > 1;
 
   const normalized = query.trim().toLowerCase();
+  // Límites de fecha (día completo) para el filtro por rango de creación.
+  const fromTime = dateFrom
+    ? new Date(`${dateFrom}T00:00:00`).getTime()
+    : null;
+  const toTime = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
   const filtered = requests.filter((r) => {
     const isActive = ACTIVE_REQUEST_STATUS.includes(r.status);
     const matchesTab =
       tab === "active" ? isActive : CLOSED_REQUEST_STATUS.includes(r.status);
     const matchesRestaurant =
       restaurantId === "ALL" || r.restaurantId === restaurantId;
+    const matchesStatus = statusFilter === "ALL" || r.status === statusFilter;
+    const matchesPriority =
+      priorityFilter === "ALL" || r.priority === priorityFilter;
+    const matchesType = typeFilter === "ALL" || r.equipmentTypeId === typeFilter;
+    const createdTime = new Date(r.createdAt).getTime();
+    const matchesFrom = fromTime === null || createdTime >= fromTime;
+    const matchesTo = toTime === null || createdTime <= toTime;
     const matchesQuery =
       !normalized ||
       [r.equipmentTypeName, r.restaurantName, r.requestedByName, r.reason]
         .filter(Boolean)
         .some((v) => v!.toLowerCase().includes(normalized));
-return matchesTab && matchesRestaurant && matchesQuery;
+    return (
+      matchesTab &&
+      matchesRestaurant &&
+      matchesStatus &&
+      matchesPriority &&
+      matchesType &&
+      matchesFrom &&
+      matchesTo &&
+      matchesQuery
+    );
   });
+
+  const hasExtraFilters =
+    statusFilter !== "ALL" ||
+    priorityFilter !== "ALL" ||
+    typeFilter !== "ALL" ||
+    dateFrom !== "" ||
+    dateTo !== "";
+
+  function clearExtraFilters() {
+    setStatusFilter("ALL");
+    setPriorityFilter("ALL");
+    setTypeFilter("ALL");
+    setDateFrom("");
+    setDateTo("");
+  }
 
   const sorted = React.useMemo(
     () =>
@@ -225,6 +267,81 @@ return matchesTab && matchesRestaurant && matchesQuery;
                   })),
                 ]}
               />
+            )}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[190px]" aria-label="Filtrar por estado">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todos los estados</SelectItem>
+                {ALL_REQUEST_STATUS.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {REQUEST_STATUS_LABELS[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger
+                className="w-[180px]"
+                aria-label="Filtrar por prioridad"
+              >
+                <SelectValue placeholder="Prioridad" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todas las prioridades</SelectItem>
+                {ALL_REQUEST_PRIORITY.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {REQUEST_PRIORITY_LABELS[p]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger
+                className="w-[200px]"
+                aria-label="Filtrar por tipo de equipo"
+              >
+                <SelectValue placeholder="Tipo de equipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">Todos los tipos</SelectItem>
+                {typeOptions.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                aria-label="Creadas desde"
+                className="w-[160px]"
+              />
+              <span className="text-muted-foreground">–</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                aria-label="Creadas hasta"
+                className="w-[160px]"
+              />
+            </div>
+            {hasExtraFilters && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearExtraFilters}
+              >
+                Limpiar filtros
+              </Button>
             )}
           </div>
 

@@ -19,6 +19,7 @@ import {
 } from "@/lib/equipment/lifecycle";
 import { ROLES, EQUIPMENT_STATUS_LABELS, EQUIPMENT_MOVEMENT_TYPE_LABELS } from "@/lib/db/enums";
 import { isOnLoan } from "@/lib/equipment/movements";
+import { listEquipmentAreaChanges } from "@/lib/db/queries/requests";
 import { EquipmentActions } from "@/components/equipment/equipment-actions";
 import { DetailMovementActions } from "@/components/movements/detail-movement-actions";
 import { LifecycleBadge } from "@/components/equipment/lifecycle-badge";
@@ -120,6 +121,9 @@ export default async function EquipmentDetailPage({
           .orderBy(asc(restaurants.name))
       : Promise.resolve([]),
   ]);
+
+  const areaChanges = await listEquipmentAreaChanges(id);
+  const totalAreaChanges = areaChanges.reduce((sum, a) => sum + a.total, 0);
 
   const restaurantOptions = allRestaurants.map((r) => ({
     id: r.id,
@@ -268,6 +272,51 @@ export default async function EquipmentDetailPage({
               <p className="mt-4 rounded-md bg-muted/50 p-3 text-sm">
                 {row.e.notes}
               </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Cambios de área</CardTitle>
+            <CardDescription>
+              Cuántas veces se ha registrado este equipo en un área del
+              restaurante, a partir de sus solicitudes de reemplazo.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {areaChanges.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No hay cambios de área registrados para este equipo.
+              </p>
+            )}
+            {areaChanges.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-sm">
+                  <span className="font-semibold">{totalAreaChanges}</span>{" "}
+                  registro(s) en{" "}
+                  <span className="font-semibold">{areaChanges.length}</span>{" "}
+                  área(s).
+                </p>
+                <ul className="space-y-2">
+                  {areaChanges.map((area) => (
+                    <li
+                      key={area.destinationArea}
+                      className="flex items-center justify-between gap-3 rounded-md border p-2 text-sm"
+                    >
+                      <span className="min-w-0 truncate">
+                        {area.destinationArea}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          Última: {formatDate(area.lastChangeAt)}
+                        </span>
+                        <Badge variant="secondary">{area.total}</Badge>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </CardContent>
         </Card>

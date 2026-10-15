@@ -11,6 +11,7 @@ import { getOpenRouterModel } from "@/lib/ai/openrouter";
 import {
   requestsByType,
   requestsRankingByRestaurant,
+  requestsRankingByTechnician,
   restaurantsByReplacementRequests,
   equipmentTypeLifespan,
   equipmentByType,
@@ -121,6 +122,19 @@ export async function POST(req: Request) {
             return rows.map((r) => ({
               restaurantName: r.restaurantName,
               restaurantCode: codes.get(r.restaurantId) ?? r.restaurantId,
+              totalRequests: r.totalRequests,
+            }));
+          },
+        }),
+        technicians_ranking: tool({
+          description:
+            "Ranking de técnicos y jefes de técnicos por número de solicitudes de equipo registradas.",
+          inputSchema: zodSchema(z.object({})),
+          async execute() {
+            const rows = await requestsRankingByTechnician();
+            return rows.map((r) => ({
+              technicianName: r.userName,
+              role: r.role,
               totalRequests: r.totalRequests,
             }));
           },

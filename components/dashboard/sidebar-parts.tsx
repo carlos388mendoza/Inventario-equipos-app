@@ -157,10 +157,11 @@ export function NavLink({
 /**
  * Lista de navegación agrupada.
  *
- * Expandida lista TODAS las secciones visibles (principales y secundarias), como
- * antes de agruparlas, para no esconder opciones cuando hay espacio. Contraída
- * lista solo las principales (iconos, con tooltip) y deja las secundarias al
- * menú `…` de la parte inferior, porque ahí no caben sus nombres.
+ * Expandida lista TODAS las secciones visibles (principales y secundarias) y NO
+ * dibuja el botón «Más opciones»: las secundarias ya están inline en su grupo,
+ * así que mostrarlas otra vez en un menú las duplicaría. Contraída lista solo las
+ * principales (iconos, con tooltip) y ofrece las secundarias desde el menú `…`
+ * de la parte inferior, porque ahí no caben sus nombres.
  */
 export function SidebarNav({
   items,
@@ -209,11 +210,13 @@ export function SidebarNav({
           </React.Fragment>
         );
       })}
-      <SidebarSecondaryMenu
-        items={secondaryItems}
-        collapsed={collapsed}
-        onNavigate={onNavigate}
-      />
+      {collapsed && (
+        <SidebarSecondaryMenu
+          items={secondaryItems}
+          collapsed
+          onNavigate={onNavigate}
+        />
+      )}
     </nav>
   );
 }
@@ -224,16 +227,14 @@ export function SidebarNav({
  * Las secciones marcadas como `secondary` en `NAV_ITEMS` son las que ofrece este
  * menú. El botón ocupa la parte inferior del sidebar y tiene EXACTAMENTE la
  * misma alineación, ancho, altura y espaciado que el resto de los elementos de
- * navegación, tanto expandido (icono + texto "Más opciones") como contraído
- * (solo el icono, alineado igual que los demás).
+ * navegación (icono + texto "Más opciones" expandido, solo el icono contraído).
  *
- * Contraído, el acceso conserva su nombre accesible con tooltip. Expandido,
- * cuando hay secciones secundarias visibles para el rol actual, estas también se
- * listan directamente en la navegación (para no esconder opciones tras el menú),
- * pero el botón de "Más opciones" sigue presente en la parte inferior, con su
- * menú. Si el rol no tiene ninguna sección secundaria, no se dibuja nada (ni
- * botón ni menú vacío). Respeta los mismos grupos y permisos, pues usa las
- * secciones ya filtradas por rol.
+ * `SidebarNav` solo lo dibuja contraído: en ese modo las secundarias no caben
+ * inline y este menú es su única vía de acceso, con tooltip en el botón. Con el
+ * sidebar expandido las secundarias se listan directamente en su grupo y el
+ * botón se oculta, para no duplicar enlaces. Si el rol no tiene ninguna sección
+ * secundaria, no se dibuja nada (ni botón ni menú vacío). Respeta los mismos
+ * grupos y permisos, pues usa las secciones ya filtradas por rol.
  */
 export function SidebarSecondaryMenu({
   items,

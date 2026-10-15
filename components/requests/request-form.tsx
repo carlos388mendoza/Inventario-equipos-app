@@ -41,7 +41,6 @@ interface VoiceDraft {
   currentEquipmentId: string;
   priority: string;
   reason: string;
-  description: string;
 }
 
 type SpeechRecognitionLike = {
@@ -218,7 +217,6 @@ export function RequestForm({
   const [priority, setPriority] = React.useState("NORMAL");
   const [destinationArea, setDestinationArea] = React.useState("");
   const [reason, setReason] = React.useState("");
-  const [description, setDescription] = React.useState("");
 
   const restaurantLocked = Boolean(currentRestaurantId);
 
@@ -236,7 +234,6 @@ export function RequestForm({
     setPriority("NORMAL");
     setDestinationArea("");
     setReason("");
-    setDescription("");
   }
 
   function applyDraft(draft: VoiceDraft) {
@@ -245,7 +242,6 @@ export function RequestForm({
     setCurrentEquipmentId(draft.currentEquipmentId ?? "");
     setPriority(draft.priority ?? "NORMAL");
     setReason(draft.reason);
-    setDescription(draft.description ?? "");
     toast.success("Solicitud prellenada con la IA. Revísala y envía.");
   }
 
@@ -259,7 +255,6 @@ export function RequestForm({
         currentEquipmentId: currentEquipmentId || "",
         destinationArea: destinationArea || "",
         reason,
-        description,
         restaurantId: restaurantLocked ? currentRestaurantId ?? "" : restaurantId,
       });
       if (!result.ok) {
@@ -405,18 +400,6 @@ export function RequestForm({
           maxLength={500}
           rows={3}
           required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="req-description">Descripción (opcional)</Label>
-        <Textarea
-          id="req-description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Detalles adicionales que ayuden a evaluar la solicitud."
-          maxLength={2000}
-          rows={3}
         />
       </div>
 

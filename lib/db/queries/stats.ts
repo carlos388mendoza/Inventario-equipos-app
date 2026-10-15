@@ -15,7 +15,9 @@ import {
   equipmentRequests,
   equipmentTypes,
   restaurants,
+  userTable,
 } from "@/lib/db/schema";
+import { TECHNICIAN_ROLES } from "@/lib/db/enums";
 
 /**
  * Restaurantes cuya solicitud corresponde a un reemplazo de equipo actual
@@ -114,6 +116,28 @@ export async function requestsRankingByRestaurant() {
     )
     .groupBy(restaurants.id)
     .orderBy(desc(count()));
+}
+
+/**
+ * Ranking de técnicos (TECHNICIAN / HEAD_TECHNICIAN) por número de solicitudes
+ * de equipo registradas. Orden descendente: los que más solicitan primero.
+ * Cuenta todas las solicitudes del técnico, incluidas las ya cerradas.
+ */
+export async function requestsRankingByTechnician(limit = 10) {
+  return db
+    .select({
+      userId: userTable.id,
+      userName: userTable.name,
+      userEmail: userTable.email,
+      role: userTable.role,
+      totalRequests: count(),
+    })
+    .from(equipmentRequests)
+    .innerJoin(userTable, eq(equipmentRequests.requestedBy, userTable.id))
+    .where(inArray(userTable.role, TECHNICIAN_ROLES))
+    .groupBy(userTable.id)
+    .orderBy(desc(count()))
+    .limit(limit);
 }
 
 /**
