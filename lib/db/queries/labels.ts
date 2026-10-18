@@ -34,14 +34,28 @@ type LabelDb = Pick<
 >;
 
 /**
- * Devuelve el equipo con la identidad de su restaurante, o `undefined` si no
- * existe o si su tipo/restaurante no fueran válidos (los JOIN son interiores a
- * propósito: no queremos una etiqueta sin marca que imprimir).
+ * Relación del equipo que falta para poder emitir su etiqueta. La etiqueta
+ * física imprime solo QR + logo, pero el tipo viaja al QR y la página pública
+ * `/e/[token]` lo muestra, así que ambos siguen siendo obligatorios: aquí se
+ * distingue "no existe" de "existe pero le falta una relación" para no
+ * confundir a quien genera la etiqueta (issue #34).
  */
-export async function getLabelEquipmentRow(
+export type LabelEquipmentIssue = "TYPE" | "RESTAURANT";
+
+export type LabelEquipmentResolution =
+  | { status: "ok"; row: LabelEquipmentRow }
+  | { status: "not-found" }
+  | { status: "incomplete"; assetCode: string; issues: LabelEquipmentIssue[] };
+
+/**
+ * Resuelve el equipo con la identidad de su restaurante. Usa JOIN exteriores
+ * para poder decir EXACTAMENTE qué falta cuando la relación está rota, en vez
+ * de devolver un genérico "no encontrado".
+ */
+export async function resolveLabelEquipment(
   db: LabelDb,
   equipmentId: string
-): Promise<LabelEquipmentRow | undefined> {
+): Promise<LabelEquipmentResolution> {
   const [row] = await db
     .select({
       id: equipment.id,
@@ -56,12 +70,48 @@ export async function getLabelEquipmentRow(
       restaurantLogo: restaurants.logo,
     })
     .from(equipment)
-    .innerJoin(equipmentTypes, eq(equipment.equipmentTypeId, equipmentTypes.id))
-    .innerJoin(restaurants, eq(equipment.restaurantId, restaurants.id))
+    .leftJoin(equipmentTypes, eq(equipment.equipmentTypeId, equipmentTypes.id))
+    .leftJoin(restaurants, eq(equipment.restaurantId, restaurants.id))
     .where(eq(equipment.id, equipmentId))
     .limit(1);
 
-  return row;
+  if (!row) return { status: "not-found" };
+
+  const issues: LabelEquipmentIssue[] = [];
+  if (row.typeName === null) issues.push("TYPE");
+  if (row.restaurantName === null) issues.push("RESTAURANT");
+  if (issues.length > 0) {
+    return { status: "incomplete", assetCode: row.assetCode, issues };
+  }
+
+  return {
+    status: "ok",
+    row: {
+      id: row.id,
+      restaurantId: row.restaurantId,
+      assetCode: row.assetCode,
+      installationDate: row.installationDate,
+      typeName: row.typeName as string,
+      restaurantCode: row.restaurantCode as string,
+      restaurantName: row.restaurantName as string,
+      restaurantBrand: row.restaurantBrand,
+      restaurantSector: row.restaurantSector,
+      restaurantLogo: row.restaurantLogo,
+    },
+  };
+}
+
+/**
+ * Devuelve el equipo con la identidad de su restaurante, o `undefined` si no
+ * existe o si su tipo/restaurante no fueran válidos (la etiqueta no se emite
+ * sin ellos a propósito).
+ */
+export async function getLabelEquipmentRow(
+  db: LabelDb,
+  equipmentId: string
+): Promise<LabelEquipmentRow | undefined> {
+  const resolution = await resolveLabelEquipment(db, equipmentId);
+  return resolution.status === "ok" ? resolution.row : undefined;
 }
 
 /**

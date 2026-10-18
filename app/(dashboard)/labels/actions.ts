@@ -5,8 +5,9 @@ import QRCode from "qrcode";
 import { requireRole } from "@/lib/auth/session";
 import { resolveScope, assertRestaurantAccess } from "@/lib/equipment/scope";
 import { db } from "@/lib/db";
-import { getLabelEquipmentRow, upsertSecurityLabel } from "@/lib/db/queries/labels";
+import { resolveLabelEquipment, upsertSecurityLabel } from "@/lib/db/queries/labels";
 import { ROLES } from "@/lib/db/enums";
+import { describeIncompleteLabel } from "@/lib/labels/label-generation";
 import { generateLabelSchema } from "@/lib/validation/labels";
 import { appBaseUrl } from "@/lib/utils";
 
@@ -25,7 +26,7 @@ export type GenerateLabelResult =
       installationDate: Date | null;
       createdAt: Date;
     }
-  | { ok: false; error: string };
+  | { ok: false; error: string; assetCode?: string };
 
 /**
  * Genera (o regenera) la etiqueta de seguridad de un equipo.
@@ -33,8 +34,9 @@ export type GenerateLabelResult =
  * el QR nunca expone información sensible.
  *
  * Funciona con cualquier restaurante: la identidad se lee del restaurante al que
- * pertenece el equipo (ver `getLabelEquipmentRow`), así que no hay ninguna
- * condición que lo limite a una unidad concreta.
+ * pertenece el equipo (ver `resolveLabelEquipment`), así que no hay ninguna
+ * condición que lo limite a una unidad concreta. Si al equipo le falta el tipo o
+ * el restaurante, se devuelve un error explicando exactamente qué falta.
  */
 export async function generateSecurityLabel(
   input: unknown
@@ -45,10 +47,18 @@ export async function generateSecurityLabel(
   try {
     const parsed = generateLabelSchema.parse(input);
 
-    const row = await getLabelEquipmentRow(db, parsed.equipmentId);
-    if (!row) {
+    const resolution = await resolveLabelEquipment(db, parsed.equipmentId);
+    if (resolution.status === "not-found") {
       return { ok: false, error: "Equipo no encontrado." };
     }
+    if (resolution.status === "incomplete") {
+      return {
+        ok: false,
+        assetCode: resolution.assetCode,
+        error: describeIncompleteLabel(resolution.assetCode, resolution.issues),
+      };
+    }
+    const row = resolution.row;
     assertRestaurantAccess(scope, row.restaurantId);
 
     const token = crypto.randomUUID().replaceAll("-", "");

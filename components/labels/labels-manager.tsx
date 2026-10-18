@@ -44,8 +44,14 @@ import {
   GeneratedLabelsList,
   type GeneratedLabelItem,
 } from "@/components/labels/generated-labels-list";
+import { BatchFailures } from "@/components/labels/batch-failures";
 import { PrintPanel, type LabelPrintData } from "@/components/labels/print-panel";
 import { PrintQueue } from "@/components/labels/print-queue";
+import {
+  collectBatchFailures,
+  type BatchFailure,
+  type SettledLabelEntry,
+} from "@/lib/labels/label-generation";
 import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
 import { formatDate } from "@/lib/utils";
@@ -89,6 +95,7 @@ export function LabelsManager({
   const [generated, setGenerated] = React.useState<GeneratedLabelItem[] | null>(
     null
   );
+  const [batchErrors, setBatchErrors] = React.useState<BatchFailure[]>([]);
   const [rowToPrint, setRowToPrint] = React.useState<LabelPrintData | null>(
     null
   );
@@ -167,6 +174,7 @@ export function LabelsManager({
     setRestaurantId("");
     setEquipmentIds([]);
     setGenerated(null);
+    setBatchErrors([]);
     setPreview(null);
     setDialogOpen(true);
   }
@@ -177,28 +185,41 @@ export function LabelsManager({
     startSubmit(async () => {
       // Se genera una etiqueta por equipo seleccionado: mismo restaurante, un
       // solo gesto. Cada equipo conserva su propio token y su propio QR.
-      const results = await Promise.all(
-        ids.map((id) => generateSecurityLabel({ equipmentId: id }))
+      // El lote no se aborta con la primera excepción: Promise.allSettled separa
+      // éxitos y fallos para informar exactamente qué equipo falló.
+      setBatchErrors([]);
+      const promises = ids.map(async (id) => generateSecurityLabel({ equipmentId: id }));
+      const settled = (await Promise.allSettled(promises)) as SettledLabelEntry["settled"][];
+      const entries: SettledLabelEntry[] = ids.map((id, index) => ({
+        equipmentId: id,
+        settled: settled[index],
+      }));
+      const ok = entries
+        .filter((entry) => entry.settled.status === "fulfilled" && entry.settled.value.ok)
+        .map((entry) =>
+          entry.settled.status === "fulfilled"
+            ? (entry.settled.value as Extract<GenerateLabelResult, { ok: true }>)
+            : (undefined as never)
+        );
+      setGenerated(ok.length > 0 ? ok : null);
+      const assetCodeMap = new Map<string, string>(
+        candidateEquipment
+          .filter((e) => ids.includes(e.id))
+          .map((e) => [e.id, e.assetCode])
       );
-      const ok = results.filter(
-        (r): r is Extract<GenerateLabelResult, { ok: true }> => r.ok
-      );
-      setGenerated(ok);
+      const failures = collectBatchFailures(entries, assetCodeMap);
+      setBatchErrors(failures);
       if (ok.length === 0) {
         toast.error("No se pudo generar ninguna etiqueta.");
         return;
       }
-      const failed = results.length - ok.length;
-      if (failed > 0) {
+      if (failures.length > 0) {
         toast.warning(
-          `Se generaron ${ok.length} etiqueta(s); ${failed} no se pudieron generar.`
+          `Se generaron ${ok.length} etiqueta(s); ${failures.length} no se pudieron generar.`
         );
       } else {
         toast.success(`${ok.length} etiqueta(s) generada(s).`);
       }
-      // La server action ya devuelve el RSC actualizado de esta ruta, así que
-      // aquí solo se avisa al resto de pestañas. El contador de "Etiquetas QR"
-      // del panel se actualiza sin F5.
       broadcastOnly();
     });
   }
@@ -427,6 +448,7 @@ export function LabelsManager({
           }
           setDialogOpen(false);
           setPreview(null);
+          setBatchErrors([]);
           router.refresh();
         }}
       >
@@ -582,6 +604,9 @@ export function LabelsManager({
                </div>
              </div>
            )}
+           {/* Fuera de `generated`: si el lote falla ENTERO no hay exitos que
+               listar, pero los errores por equipo deben verse igual. */}
+           <BatchFailures failures={batchErrors} />
             </>
           )}
         </DialogContent>
