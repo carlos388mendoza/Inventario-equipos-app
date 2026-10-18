@@ -37,11 +37,15 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { MultiSelect } from "@/components/ui/multi-select";
-import { Printer } from "lucide-react";
+import { Eye, Printer } from "lucide-react";
 import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
+import { LabelPreview, type LabelPreviewData } from "@/components/labels/label-preview";
+import {
+  GeneratedLabelsList,
+  type GeneratedLabelItem,
+} from "@/components/labels/generated-labels-list";
 import { PrintPanel, type LabelPrintData } from "@/components/labels/print-panel";
 import { PrintQueue } from "@/components/labels/print-queue";
-import { LabelPreview } from "@/components/labels/label-preview";
 import { SortableHeader, useTableSort } from "@/components/ui/sortable";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
 import { formatDate } from "@/lib/utils";
@@ -80,17 +84,17 @@ export function LabelsManager({
   const [restaurantId, setRestaurantId] = React.useState("");
   const [equipmentIds, setEquipmentIds] = React.useState<string[]>([]);
   const [dialogOpen, setDialogOpen] = React.useState(false);
-  // Etiquetas recién generadas en el diálogo, listas para imprimir en lote.
-  const [generated, setGenerated] = React.useState<LabelPrintData[] | null>(
+  // Etiquetas recién generadas en el diálogo, con su propio QR para la vista
+  // previa y sus datos para imprimir.
+  const [generated, setGenerated] = React.useState<GeneratedLabelItem[] | null>(
     null
   );
   const [rowToPrint, setRowToPrint] = React.useState<LabelPrintData | null>(
     null
   );
-  const [labelToPreview, setLabelToPreview] = React.useState<LabelDto | null>(
-    null
-  );
-  const [previewDate, setPreviewDate] = React.useState<Date | null>(null);
+  // Vista previa (solo QR + logo). Es estado independiente de la impresión y de
+  // la selección: abrirla o cerrarla no toca ninguna de las dos.
+  const [preview, setPreview] = React.useState<LabelPreviewData | null>(null);
   // Selección para imprimir en lote. Guarda ids, no objetos: así un refresh del
   // router no puede dejar seleccionados datos viejos.
   const [selectedIds, setSelectedIds] = React.useState<ReadonlySet<string>>(
@@ -101,6 +105,10 @@ export function LabelsManager({
   const [queueLabels, setQueueLabels] = React.useState<LabelPrintData[]>([]);
   const [queueOpen, setQueueOpen] = React.useState(false);
   const { sort, toggle, sortRows } = useTableSort();
+  // Elemento que abrió el diálogo (botón «Generar etiqueta» o «Vista previa» de
+  // una fila). Radix restaura el foco con el Dialog.Trigger, que aquí no existe,
+  // así que lo guardamos para devolvérselo al cerrar.
+  const dialogTriggerRef = React.useRef<HTMLButtonElement | null>(null);
 
   const [submitting, startSubmit] = useTransition();
   const router = useRouter();
@@ -159,6 +167,7 @@ export function LabelsManager({
     setRestaurantId("");
     setEquipmentIds([]);
     setGenerated(null);
+    setPreview(null);
     setDialogOpen(true);
   }
 
@@ -171,11 +180,9 @@ export function LabelsManager({
       const results = await Promise.all(
         ids.map((id) => generateSecurityLabel({ equipmentId: id }))
       );
-      const ok = results
-        .filter(
-          (r): r is Extract<GenerateLabelResult, { ok: true }> => r.ok
-        )
-        .map(toPrintData);
+      const ok = results.filter(
+        (r): r is Extract<GenerateLabelResult, { ok: true }> => r.ok
+      );
       setGenerated(ok);
       if (ok.length === 0) {
         toast.error("No se pudo generar ninguna etiqueta.");
@@ -221,7 +228,14 @@ export function LabelsManager({
               página pública con los datos del equipo.
             </CardDescription>
           </div>
-          <Button onClick={openDialog}>Generar etiqueta</Button>
+          <Button
+            onClick={(event) => {
+              dialogTriggerRef.current = event.currentTarget;
+              openDialog();
+            }}
+          >
+            Generar etiqueta
+          </Button>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
@@ -357,15 +371,21 @@ export function LabelsManager({
                       {formatDate(l.createdAt)}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <div className="inline-flex flex-wrap justify-end gap-2">
+<div className="inline-flex gap-2">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          onClick={() => {
-                            setLabelToPreview(l);
-                            setPreviewDate(new Date());
+                          aria-label={`Vista previa de la etiqueta ${l.assetCode}`}
+                          onClick={(event) => {
+                            // Misma vista previa que en el lote, pero en su
+                            // propio diálogo (no hay lote abierto detrás).
+                            dialogTriggerRef.current = event.currentTarget;
+                            setGenerated(null);
+                            setPreview(l);
+                            setDialogOpen(true);
                           }}
                         >
+                          <Eye />
                           Vista previa
                         </Button>
                         <Button
@@ -397,18 +417,68 @@ export function LabelsManager({
       <Dialog
         open={dialogOpen}
         onOpenChange={(open) => {
-          setDialogOpen(open);
-          if (!open) router.refresh();
+           if (open) {
+            setDialogOpen(true);
+            return;
+          }
+          if (preview && generated) {
+            setPreview(null);
+            return;
+          }
+          setDialogOpen(false);
+          setPreview(null);
+          router.refresh();
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Generar etiqueta de seguridad</DialogTitle>
-            <DialogDescription>
-              El QR se genera con la URL pública del equipo y no contiene datos
-              sensibles.
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            // El Dialog no usa Trigger: devolvemos el foco al botón que lo abrió.
+            event.preventDefault();
+            dialogTriggerRef.current?.focus();
+          }}
+        >
+          {preview ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Vista previa de la etiqueta</DialogTitle>
+                <DialogDescription>
+                  Así se verá la etiqueta física: solo el código QR y el logotipo
+                  del restaurante.
+                </DialogDescription>
+              </DialogHeader>
+              <LabelPreview data={preview} />
+              <div className="flex justify-end">
+                {generated ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    autoFocus
+                    onClick={() => setPreview(null)}
+                  >
+                    Volver al lote
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDialogOpen(false)}
+                  >
+                    Cerrar
+                  </Button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Generar etiqueta de seguridad</DialogTitle>
+                <DialogDescription>
+                  El QR se genera con la URL pública del equipo y no contiene datos
+                  sensibles.
+                </DialogDescription>
+              </DialogHeader>
           {!generated && (
             <form onSubmit={handleGenerate} className="space-y-4">
               <div className="space-y-2">
@@ -477,90 +547,42 @@ export function LabelsManager({
             </form>
           )}
 
-          {generated && (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                {generated.length} etiqueta(s) generada(s). Puedes imprimirlas
-                todas juntas o una por una.
-              </p>
-              <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2 text-sm">
-                {generated.map((label) => (
-                  <li
-                    key={`${label.assetCode}-${label.url}`}
-                    className="flex items-center justify-between gap-2"
-                  >
-                    <span className="font-mono text-xs">{label.assetCode}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setRowToPrint(label)}
-                    >
-                      <Printer />
-                      Imprimir
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    setQueueLabels(generated);
-                    setDialogOpen(false);
-                    setQueueOpen(true);
-                  }}
-                >
-                  <Printer />
-                  Imprimir {generated.length} etiqueta(s)
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setDialogOpen(false)}
-                >
-                  Cerrar
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={labelToPreview !== null}
-        onOpenChange={(open) => {
-          if (!open) setLabelToPreview(null);
-        }}
-      >
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              Vista previa {labelToPreview?.assetCode ?? "de etiqueta"}
-            </DialogTitle>
-            <DialogDescription>
-              Vista del QR y el logo de esta etiqueta. La fecha actual se muestra como referencia.
-            </DialogDescription>
-          </DialogHeader>
-          {labelToPreview && (
-            <div className="space-y-2">
-              <LabelPreview
-                data={{
-                  qrDataUrl: labelToPreview.qrDataUrl,
-                  assetCode: labelToPreview.assetCode,
-                  typeName: labelToPreview.typeName,
-                  restaurantName: labelToPreview.restaurantName,
-                  restaurantLogo: labelToPreview.restaurantLogo,
-                  installationDate: labelToPreview.installationDate,
-                  createdAt: labelToPreview.createdAt,
-                }}
-              />
-              <p className="text-right text-xs text-muted-foreground">
-                Fecha actual: {formatDate(previewDate)}
-              </p>
-            </div>
+           {generated && (
+             <div className="space-y-4">
+               <p className="text-sm text-muted-foreground">
+                 {generated.length} etiqueta(s) generada(s). Puedes imprimirlas
+                 todas juntas o una por una.
+               </p>
+               <GeneratedLabelsList
+                 labels={generated}
+                 onPrint={(label) => setRowToPrint(toPrintData(label))}
+                 onPreview={(label) => setPreview(label)}
+               />
+               <div className="flex flex-wrap justify-end gap-2">
+                 <Button
+                   type="button"
+                   size="sm"
+                   onClick={() => {
+                     setQueueLabels(generated.map(toPrintData));
+                     setDialogOpen(false);
+                     setQueueOpen(true);
+                   }}
+                 >
+                   <Printer />
+                   Imprimir {generated.length} etiqueta(s)
+                 </Button>
+                 <Button
+                   type="button"
+                   variant="ghost"
+                   size="sm"
+                   onClick={() => setDialogOpen(false)}
+                 >
+                   Cerrar
+                 </Button>
+               </div>
+             </div>
+           )}
+            </>
           )}
         </DialogContent>
       </Dialog>

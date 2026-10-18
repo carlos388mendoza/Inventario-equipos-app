@@ -9,14 +9,16 @@ import {
   VERTICAL_BIAS,
 } from "@/lib/zpl/layout";
 
+/**
+ * Datos minimos que pinta la vista previa: SOLO el QR y el logotipo.
+ *
+ * La etiqueta fisica no imprime texto (ni equipo, ni tipo, ni restaurante), asi
+ * que el tipo se limita a las dos imagenes. Cualquier dato de negocio (codigo de
+ * activo, tipo, fecha...) se queda fuera a proposito.
+ */
 export interface LabelPreviewData {
   qrDataUrl: string;
-  assetCode: string;
-  typeName: string;
-  restaurantName: string;
   restaurantLogo: string | null;
-  installationDate?: string | Date | null;
-  createdAt: string | Date;
 }
 
 /**
@@ -86,7 +88,7 @@ export function LabelPreview({ data }: { data: LabelPreviewData }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={data.restaurantLogo}
-            alt={`Logo de ${data.restaurantName}`}
+            alt="Logotipo del restaurante"
             className="max-h-full max-w-full object-contain"
           />
         ) : null}
