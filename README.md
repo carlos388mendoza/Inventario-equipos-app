@@ -286,23 +286,14 @@ Reglas completas en [`docs/MOVIMIENTOS.md`](docs/MOVIMIENTOS.md).
 
 ## Etiquetas, QR e impresión
 
-- Cada equipo puede tener **una** etiqueta de seguridad (`security_labels`).
-- Al **registrar** un equipo, el aviso de éxito ofrece generar su etiqueta y abre
-  `/labels` con ese equipo ya preseleccionado; nadie tiene que buscarlo a mano.
-- El token es un **UUID sin guiones** (32 caracteres hexadecimales), no el
-  identificador del equipo. Quien tenga el QR no puede deducir nada del inventario.
-- La URL del QR es `/e/<token>` y se genera con `NEXT_PUBLIC_APP_URL`.
-- La ficha pública **muestra solo**: código de activo, tipo, marca/modelo,
-  restaurante asignado (con logo), fecha de instalación y estado.
-  **Nunca** muestra número de serie, notas, documento de origen ni datos de
-  usuarios. Busca por `token`, jamás por `id`.
-- La impresión usa **Zebra Browser Print** (servicio local del navegador) a
-  través de `zebra-browser-print-wrapper`, enviando ZPL generado por el módulo
-  propio `lib/zpl/`.
-- El módulo ZPL está **congelado por hash**: `lib/zpl/graphics.generated.ts` debe
-  mantener SHA-256
-  `EA185E75E01164E1B95C95B16F8332A09569CFB2AC59E77F03A38DAE663F6504`, y hay un
-  test (`lib/zpl/zpl-lock.test.ts`) que lo verifica.
+- Cada equipo puede tener **una** etiqueta de seguridad (`security_labels`). Se
+  genera al registrar un equipo (el aviso de éxito abre `/labels` con ese equipo
+  ya preseleccionado) o desde `/labels`.
+- El QR lleva un **token opaco**, no el identificador del equipo, y apunta a una
+  ficha pública (`/e/<token>`) sin sesión y con datos mínimos. Quien tenga el QR
+  no puede deducir nada del inventario.
+- La impresión usa **Zebra Browser Print** (servicio local del navegador) con ZPL
+  generado por `lib/zpl/`, **congelado por hash** y verificado por un test.
 
 Detalle en [`docs/ETIQUETAS-Y-QR.md`](docs/ETIQUETAS-Y-QR.md).
 

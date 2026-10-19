@@ -176,9 +176,9 @@ detalle está en `docs/ETIQUETAS-Y-QR.md`, sección 7.
    archivo del proyecto referenciaba.
 7. **Renombrar `public/brands/pizza-hut.jpg`**, que es un AVIF con extensión `.jpg`.
    No es un error funcional: se deja hasta que haya un momento tranquilo.
-8. **Consolidar la documentación del QR**: hoy está en el README, en
-   `docs/ETIQUETAS-Y-QR.md` y en los comentarios de `security_labels`. Conviene
-   que el README apunte y no repita.
+8. **Consolidar la documentación del QR.** Hecho: la sección del README se
+   redujo a un resumen y enlaza a `docs/ETIQUETAS-Y-QR.md`, que es donde vive el
+   detalle (token, ficha pública, ZPL y hash).
 9. **Prueba de extremo a extremo real de impresión** en una ZD230, más allá de los
    tests de la cola.
 
