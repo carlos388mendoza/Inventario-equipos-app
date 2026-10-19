@@ -228,3 +228,16 @@ duplica, pero **sustituye**.
 **Un equipo sin etiqueta**
 La etiqueta es opcional. `/equipment` muestra su estado de seguridad, y `/labels`
 genera la que falte. Los 29 equipos sin etiqueta no están rotos.
+
+**"Solo funciona con algunos equipos" (issue #34)**
+`generateSecurityLabel` resuelve la identidad con JOIN exteriores: si a un equipo
+le falta el tipo o el restaurante, no se le puede emitir etiqueta con identidad y
+la acción lo dice por su `assetCode`. Para verlo antes de intentarlo, el script de
+solo lectura lista los equipos afectados:
+
+```
+npm run label-relations:check   # requiere TURSO_DATABASE_URL (.env.local)
+```
+
+También señala los equipos en unidades retiradas (`active = 0`): no fallan al
+generar, pero no aparecen en el selector de `/labels`.

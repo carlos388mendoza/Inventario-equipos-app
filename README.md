@@ -399,6 +399,7 @@ Todos viven en `scripts/` y **no forman parte de la app**.
 | `seed-demo-identity.ts` | Datos de identidad de demostración. |
 | `import-inventory.ts` | Importa los Excel reales (`INVENTARIO PH01.xlsx`, `DNS19.xlsx`). Soporta `--dry-run`. No borra nada. |
 | `consolidate-units.ts` | Consolida dos unidades. **Solo lectura por defecto**; exige `--source` y `--target`, y `--apply` para escribir. |
+| `check-label-relations.ts` | **Solo lectura**: lista equipos con el tipo o el restaurante roto (los que fallarían al generar su etiqueta, issue #34). |
 | `generate-zpl-logos.mjs` | Regenera los logos embebidos en el ZPL. |
 | `generate-icons.mjs` | Genera los iconos de la PWA. |
 

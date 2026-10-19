@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "logos:zpl": "node scripts/generate-zpl-logos.mjs",
+    "label-relations:check": "tsx scripts/check-label-relations.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
