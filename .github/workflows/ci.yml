@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Verificación automática: typecheck, lint, tests y build en cada cambio.
+# Usa variables de entorno de relleno (nunca secretos reales) porque el build
+# exige TURSO_DATABASE_URL y BETTER_AUTH_SECRET al compilar en producción.
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      TURSO_DATABASE_URL: libsql://ci-placeholder.invalid
+      TURSO_AUTH_TOKEN: ci-placeholder
+      BETTER_AUTH_SECRET: ci-placeholder-secret-ci-placeholder-0123
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Comprobar tipos
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        run: npm run build

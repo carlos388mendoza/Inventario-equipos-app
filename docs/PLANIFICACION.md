@@ -189,9 +189,9 @@ detalle está en `docs/ETIQUETAS-Y-QR.md`, sección 7.
 11. **Auditoría de accesos denegados.**
 12. **Búsqueda global.**
 13. **Roles configurables**, si algún día hacen falta más de tres.
-14. **Verificación automática en CI.** Los comandos existen
-    (`typecheck`, `lint`, `test`, `build`), pero no hay flujo que los ejecute
-    automáticamente en cada cambio.
+14. **Verificación automática en CI.** Hecho: `.github/workflows/ci.yml` ejecuta
+    `typecheck`, `lint`, `test` y `build` en cada push a `main` y en cada pull
+    request. El build usa variables de entorno de relleno, nunca secretos reales.
 
 ---
 
