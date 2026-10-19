@@ -68,7 +68,7 @@ Documento para profesor. Separa con claridad lo que **está implementado**, lo q
 
 ### Calidad
 
-- 13 archivos de test, 220 pruebas, todas en verde.
+- 41 archivos de test, 450 pruebas, todas en verde.
 - `typecheck`, `lint` y `build` sin errores ni avisos.
 
 ### SEO y exposición
