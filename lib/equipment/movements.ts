@@ -401,6 +401,52 @@ export function checkReplacement(
   return OK;
 }
 
+/**
+ * Valida la restauración de un equipo archivado.
+ *
+ * Solo un equipo `RETIRED` puede volver al servicio. Un `REPLACED` no: ya tiene
+ * un sustituto ocupando su lugar, y reactivarlo dejaría dos equipos creyéndose
+ * titulares del mismo puesto. Los estados en servicio no se "restauran" porque
+ * nunca salieron.
+ *
+ * Las relaciones (tipo y unidad) se pasan como contexto opcional para poder
+ * probar la regla sin base de datos; la acción las lee y las exige vivas, porque
+ * reactivar un equipo cuyo tipo desapareció o cuya unidad se dio de baja
+ * volvería a romper su etiqueta pública.
+ */
+export interface RestoreContext {
+  /** ¿Existe todavía el tipo de equipo? Por defecto, sí. */
+  typeExists?: boolean;
+  /** ¿Sigue activa la unidad donde está el equipo? Por defecto, sí. */
+  restaurantActive?: boolean;
+}
+
+export function checkRestore(
+  equipment: Pick<MovableEquipment, "status">,
+  context: RestoreContext = {}
+): MovementCheck {
+  if (equipment.status === EQUIPMENT_STATUS.ACTIVE) {
+    return fail("El equipo ya está activo.");
+  }
+  if (equipment.status !== EQUIPMENT_STATUS.RETIRED) {
+    if (equipment.status === EQUIPMENT_STATUS.REPLACED) {
+      return fail("El equipo fue sustituido por otro; no se puede reactivar.");
+    }
+    const statusLabel =
+      EQUIPMENT_STATUS_LABELS[equipment.status] ?? equipment.status;
+    return fail(`Un equipo con estado "${statusLabel}" no está archivado.`);
+  }
+  if (context.typeExists === false) {
+    return fail("El tipo de equipo ya no existe.");
+  }
+  if (context.restaurantActive === false) {
+    return fail(
+      "La unidad actual del equipo no está activa; reactívala antes de restaurarlo."
+    );
+  }
+  return OK;
+}
+
 // ─── Movimiento múltiple ─────────────────────────────────────────────────────
 
 export interface BatchValidationItem {

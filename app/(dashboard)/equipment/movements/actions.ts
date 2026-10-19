@@ -9,6 +9,7 @@ import {
   equipment,
   equipmentHistory,
   equipmentMovements,
+  equipmentTypes,
   restaurants,
 } from "@/lib/db/schema";
 import {
@@ -23,6 +24,7 @@ import {
   checkCopyInput,
   checkLocationChange,
   checkReplacement,
+  checkRestore,
   effectiveOwnerRestaurantId,
   movementDescription,
   summarizeBatch,
@@ -37,6 +39,7 @@ import {
   copyEquipmentSchema,
   moveEquipmentSchema,
   replaceEquipmentSchema,
+  restoreEquipmentSchema,
 } from "@/lib/validation/equipment-movements";
 
 export type MovementActionResult =
@@ -850,6 +853,76 @@ export async function archiveEquipment(
 
     revalidateMovementViews([row.id]);
     return { ok: true, message: `${row.assetCode} quedó archivado.` };
+  } catch (error) {
+    return toResult(error);
+  }
+}
+
+/**
+ * Restaura un equipo archivado: vuelve a `ACTIVE` sin perder su historia.
+ *
+ * Simétrico de `archiveEquipment`. No pide ubicación ni propietario: un equipo
+ * retirado sigue donde se archivó, y restaurarlo solo lo devuelve al servicio.
+ * Antes de escribir se confirma que sus relaciones siguen vivas (tipo existente
+ * y unidad activa): reactivar un equipo cuyo tipo desapareció o cuya unidad se
+ * dio de baja volvería a romper su etiqueta pública, que es exactamente el
+ * problema que persigue el diagnóstico de relaciones.
+ */
+export async function restoreEquipment(
+  input: unknown
+): Promise<MovementActionResult> {
+  const user = await requireRole(ROLES.ADMIN, ROLES.IT_MANAGER);
+  try {
+    const parsed = restoreEquipmentSchema.parse(input);
+    const map = await loadEquipmentForScope([parsed.equipmentId]);
+    const row = map.get(parsed.equipmentId);
+    if (!row) {
+      return { ok: false, error: "Equipo no encontrado o fuera de tu alcance." };
+    }
+
+    const [typeRows, restaurantRows] = await Promise.all([
+      db
+        .select({ id: equipmentTypes.id })
+        .from(equipmentTypes)
+        .where(eq(equipmentTypes.id, row.equipmentTypeId))
+        .limit(1),
+      db
+        .select({ active: restaurants.active })
+        .from(restaurants)
+        .where(eq(restaurants.id, row.restaurantId))
+        .limit(1),
+    ]);
+
+    const check = checkRestore(row, {
+      typeExists: typeRows.length > 0,
+      restaurantActive: restaurantRows[0]?.active ?? false,
+    });
+    if (!check.ok) {
+      return {
+        ok: false,
+        error: check.error ?? "No se puede restaurar el equipo.",
+      };
+    }
+
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      await tx
+        .update(equipment)
+        .set({ status: EQUIPMENT_STATUS.ACTIVE, updatedAt: now })
+        .where(eq(equipment.id, row.id));
+      await tx.insert(equipmentHistory).values({
+        id: newId(),
+        equipmentId: row.id,
+        restaurantId: row.restaurantId,
+        action: EQUIPMENT_ACTIONS.STATUS_CHANGED,
+        description: `Equipo restaurado al servicio. Motivo: ${parsed.reason}`,
+        performedBy: user.id,
+        createdAt: now,
+      });
+    });
+
+    revalidateMovementViews([row.id]);
+    return { ok: true, message: `${row.assetCode} volvió al servicio.` };
   } catch (error) {
     return toResult(error);
   }

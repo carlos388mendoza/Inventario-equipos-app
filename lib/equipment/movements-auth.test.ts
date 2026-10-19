@@ -55,8 +55,14 @@ vi.mock("@/lib/equipment/scope", () => ({
 }));
 vi.mock("@/lib/revalidate", () => ({ revalidateMovementViews: () => {} }));
 
-const { moveEquipment, bulkMoveEquipment, copyEquipment, replaceEquipment, archiveEquipment } =
-  await import("@/app/(dashboard)/equipment/movements/actions");
+const {
+  moveEquipment,
+  bulkMoveEquipment,
+  copyEquipment,
+  replaceEquipment,
+  archiveEquipment,
+  restoreEquipment,
+} = await import("@/app/(dashboard)/equipment/movements/actions");
 
 /** Todas las acciones de escritura del módulo, con la entrada más inválida posible. */
 const ACCIONES: Array<[string, (input: unknown) => Promise<unknown>]> = [
@@ -65,6 +71,7 @@ const ACCIONES: Array<[string, (input: unknown) => Promise<unknown>]> = [
   ["copyEquipment", copyEquipment],
   ["replaceEquipment", replaceEquipment],
   ["archiveEquipment", archiveEquipment],
+  ["restoreEquipment", restoreEquipment],
 ];
 
 const ENTRADA_VACIA = {};

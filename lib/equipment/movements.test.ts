@@ -8,6 +8,7 @@ import {
   checkCopyInput,
   checkLocationChange,
   checkReplacement,
+  checkRestore,
   deletionBlockedMessage,
   describeDeletionBlockers,
   effectiveOwnerRestaurantId,
@@ -310,6 +311,48 @@ describe("checkReplacement", () => {
     expect(checkReplacement(equipment(), "PH01-0001-N", new Set(["PH01-0001"])).ok).toBe(
       true
     );
+  });
+});
+
+describe("checkRestore", () => {
+  it("restaura un equipo retirado", () => {
+    expect(checkRestore(equipment({ status: EQUIPMENT_STATUS.RETIRED })).ok).toBe(
+      true
+    );
+  });
+
+  it("no restaura un equipo que sigue activo", () => {
+    const check = checkRestore(equipment({ status: EQUIPMENT_STATUS.ACTIVE }));
+    expect(check.ok).toBe(false);
+    expect(check.error).toMatch(/ya está activo/i);
+  });
+
+  it("no reactiva un equipo sustituido", () => {
+    const check = checkRestore(equipment({ status: EQUIPMENT_STATUS.REPLACED }));
+    expect(check.ok).toBe(false);
+    expect(check.error).toMatch(/sustituido/i);
+  });
+
+  it("explica que un estado en servicio no está archivado", () => {
+    const check = checkRestore(
+      equipment({ status: EQUIPMENT_STATUS.MAINTENANCE })
+    );
+    expect(check.ok).toBe(false);
+    expect(check.error).toContain("no está archivado");
+  });
+
+  it("no restaura si el tipo de equipo desapareció", () => {
+    const retired = equipment({ status: EQUIPMENT_STATUS.RETIRED });
+    expect(checkRestore(retired, { typeExists: false }).ok).toBe(false);
+    expect(checkRestore(retired, { typeExists: true }).ok).toBe(true);
+  });
+
+  it("no restaura si la unidad no está activa", () => {
+    const retired = equipment({ status: EQUIPMENT_STATUS.RETIRED });
+    const check = checkRestore(retired, { restaurantActive: false });
+    expect(check.ok).toBe(false);
+    expect(check.error).toMatch(/unidad/i);
+    expect(checkRestore(retired, { restaurantActive: true }).ok).toBe(true);
   });
 });
 

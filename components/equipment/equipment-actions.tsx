@@ -7,6 +7,7 @@ import {
   addEquipmentNote,
   changeEquipmentStatus,
 } from "@/app/(dashboard)/equipment/actions";
+import { restoreEquipment } from "@/app/(dashboard)/equipment/movements/actions";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import {
   ALL_EQUIPMENT_STATUS,
+  EQUIPMENT_STATUS,
   EQUIPMENT_STATUS_LABELS,
 } from "@/lib/db/enums";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
@@ -41,9 +43,11 @@ export function EquipmentActions({
 }) {
   const [statusOpen, setStatusOpen] = React.useState(false);
   const [noteOpen, setNoteOpen] = React.useState(false);
+  const [restoreOpen, setRestoreOpen] = React.useState(false);
   const [newStatus, setNewStatus] = React.useState(currentStatus);
   const [comment, setComment] = React.useState("");
   const [note, setNote] = React.useState("");
+  const [restoreReason, setRestoreReason] = React.useState("");
   const [submitting, startSubmit] = useTransition();
   const { refreshAndBroadcast } = useMutationSync();
 
@@ -86,8 +90,36 @@ export function EquipmentActions({
     });
   }
 
+  function handleRestore(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    startSubmit(async () => {
+      const result = await restoreEquipment({
+        equipmentId,
+        reason: restoreReason,
+      });
+      if (!result.ok) {
+        toast.error(result.error ?? "No se pudo restaurar el equipo.");
+        return;
+      }
+      toast.success(result.message);
+      setRestoreOpen(false);
+      setRestoreReason("");
+      refreshAndBroadcast();
+    });
+  }
+
   return (
     <div className="flex flex-wrap gap-2">
+      {currentStatus === EQUIPMENT_STATUS.RETIRED && (
+        <Button
+          onClick={() => {
+            setRestoreReason("");
+            setRestoreOpen(true);
+          }}
+        >
+          Restaurar
+        </Button>
+      )}
       <Button onClick={openStatus}>Cambiar estado</Button>
       <Button variant="outline" onClick={() => setNoteOpen(true)}>
         Agregar nota
@@ -171,6 +203,43 @@ export function EquipmentActions({
               </DialogClose>
               <Button type="submit" disabled={submitting}>
                 {submitting ? "Guardando…" : "Guardar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={restoreOpen} onOpenChange={setRestoreOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Restaurar equipo</DialogTitle>
+            <DialogDescription>
+              El equipo vuelve a estar activo y disponible para movimientos.
+              Conserva su etiqueta, su historial y su libro de movimientos.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleRestore} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="restore-reason">Motivo</Label>
+              <Textarea
+                id="restore-reason"
+                value={restoreReason}
+                onChange={(e) => setRestoreReason(e.target.value)}
+                placeholder="Ej. Se reparó y vuelve al servicio"
+                maxLength={1000}
+                rows={3}
+                required
+                autoFocus
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancelar
+                </Button>
+              </DialogClose>
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "Restaurando…" : "Restaurar"}
               </Button>
             </DialogFooter>
           </form>

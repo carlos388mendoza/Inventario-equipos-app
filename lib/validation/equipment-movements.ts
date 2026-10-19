@@ -119,3 +119,11 @@ export const archiveEquipmentSchema = z.object({
 });
 
 export type ArchiveEquipmentInput = z.infer<typeof archiveEquipmentSchema>;
+
+/** Restauración: devuelve un equipo archivado al servicio. */
+export const restoreEquipmentSchema = z.object({
+  equipmentId: z.string().min(1, "Selecciona un equipo"),
+  reason: z.string().trim().min(1, "Indica el motivo").max(1000),
+});
+
+export type RestoreEquipmentInput = z.infer<typeof restoreEquipmentSchema>;

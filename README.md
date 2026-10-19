@@ -553,8 +553,9 @@ documentado en [`docs/PLANIFICACION.md`](docs/PLANIFICACION.md).
 - **Solo un tipo de documento es agregable.** `equipment_groups` modela el formato
   de `DNS19.xlsx`. `AGGREGATE_INVENTORY_BRANDS` lista marcas que usan ese formato
   (hoy solo Denny's). Un tercer formato habría que añadirlo como formato nuevo.
-- **El archivado no es reversible desde la interfaz.** `archiveEquipment` pone el
-  equipo en `RETIRED`; devolverlo a `ACTIVE` se hace editando el equipo.
+- **El archivado se deshace desde la ficha.** `archiveEquipment` pone el equipo
+  en `RETIRED`; `restoreEquipment` lo devuelve a `ACTIVE` con su motivo en el
+  historial. Solo restaura si el tipo de equipo existe y su unidad sigue activa.
 - **No hay borrado de equipos.** Es deliberado: el libro de movimientos y el
   historial son auditoría y sobreviven al equipo.
 - **La ia depende de un servicio externo** (OpenRouter) y de la red. Sin clave, las
