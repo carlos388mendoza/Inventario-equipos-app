@@ -38,8 +38,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ACTIVE_REQUEST_STATUS,
-  CLOSED_REQUEST_STATUS,
   ALL_REQUEST_STATUS,
   ALL_REQUEST_PRIORITY,
   REQUEST_PRIORITY_LABELS,
@@ -49,7 +47,10 @@ import {
 } from "@/lib/db/enums";
 import { useMutationSync } from "@/lib/sync/use-tab-sync";
 import { Combobox } from "@/components/ui/combobox";
+import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { SortableHeader, useTableSort } from "@/components/ui/sortable";
+import { filterRequests } from "@/lib/requests/filters";
+import { isRangeEmpty, type DateRange } from "@/lib/date-range";
 import { formatDateTime } from "@/lib/utils";
 
 const PRIORITY_RANK: Record<string, number> = {
@@ -92,8 +93,7 @@ export function RequestManager({
   const [statusFilter, setStatusFilter] = React.useState("ALL");
   const [priorityFilter, setPriorityFilter] = React.useState("ALL");
   const [typeFilter, setTypeFilter] = React.useState("ALL");
-  const [dateFrom, setDateFrom] = React.useState("");
-  const [dateTo, setDateTo] = React.useState("");
+  const [range, setRange] = React.useState<DateRange>({});
   const [createOpen, setCreateOpen] = React.useState(false);
   const [statusTarget, setStatusTarget] = React.useState<RequestDto | null>(
     null
@@ -107,55 +107,27 @@ const [submitting, startSubmit] = useTransition();
 
   const isGlobalFilter = restaurantOptions.length > 1;
 
-  const normalized = query.trim().toLowerCase();
-  // Límites de fecha (día completo) para el filtro por rango de creación.
-  const fromTime = dateFrom
-    ? new Date(`${dateFrom}T00:00:00`).getTime()
-    : null;
-  const toTime = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
-  const filtered = requests.filter((r) => {
-    const isActive = ACTIVE_REQUEST_STATUS.includes(r.status);
-    const matchesTab =
-      tab === "active" ? isActive : CLOSED_REQUEST_STATUS.includes(r.status);
-    const matchesRestaurant =
-      restaurantId === "ALL" || r.restaurantId === restaurantId;
-    const matchesStatus = statusFilter === "ALL" || r.status === statusFilter;
-    const matchesPriority =
-      priorityFilter === "ALL" || r.priority === priorityFilter;
-    const matchesType = typeFilter === "ALL" || r.equipmentTypeId === typeFilter;
-    const createdTime = new Date(r.createdAt).getTime();
-    const matchesFrom = fromTime === null || createdTime >= fromTime;
-    const matchesTo = toTime === null || createdTime <= toTime;
-    const matchesQuery =
-      !normalized ||
-      [r.equipmentTypeName, r.restaurantName, r.requestedByName, r.reason]
-        .filter(Boolean)
-        .some((v) => v!.toLowerCase().includes(normalized));
-    return (
-      matchesTab &&
-      matchesRestaurant &&
-      matchesStatus &&
-      matchesPriority &&
-      matchesType &&
-      matchesFrom &&
-      matchesTo &&
-      matchesQuery
-    );
+  const filtered = filterRequests(requests, {
+    tab,
+    restaurantId,
+    statusFilter,
+    priorityFilter,
+    typeFilter,
+    query,
+    range,
   });
 
   const hasExtraFilters =
     statusFilter !== "ALL" ||
     priorityFilter !== "ALL" ||
     typeFilter !== "ALL" ||
-    dateFrom !== "" ||
-    dateTo !== "";
+    !isRangeEmpty(range);
 
   function clearExtraFilters() {
     setStatusFilter("ALL");
     setPriorityFilter("ALL");
     setTypeFilter("ALL");
-    setDateFrom("");
-    setDateTo("");
+    setRange({});
   }
 
   const sorted = React.useMemo(
@@ -316,23 +288,12 @@ const [submitting, startSubmit] = useTransition();
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center">
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                aria-label="Creadas desde"
-                className="w-full sm:w-[160px]"
-              />
-              <span className="hidden text-muted-foreground sm:inline">–</span>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                aria-label="Creadas hasta"
-                className="w-full sm:w-[160px]"
-              />
-            </div>
+            <DateRangePicker
+              value={range}
+              onChange={setRange}
+              aria-label="Filtrar solicitudes por rango de fechas de creación"
+              className="sm:w-[260px]"
+            />
             {hasExtraFilters && (
               <Button
                 type="button"
