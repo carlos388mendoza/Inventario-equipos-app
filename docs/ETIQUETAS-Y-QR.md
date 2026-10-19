@@ -192,17 +192,31 @@ existen para esa marca. Cubierto por `lib/labels/brand-locales.test.ts`.
 
 ## 7. Estado actual
 
+Cifras de la base de producción, auditadas el **2026-10-18** con
+`npm run label-relations:check` (solo lectura, únicamente `SELECT`):
+
 | Dato | Valor |
 |---|---|
-| Etiquetas emitidas | 52 |
-| Tokens distintos | 52 (ninguno duplicado) |
-| Etiquetas huérfanas | 0 |
-| Etiquetas de equipos con origen `INVENTARIO PH01.xlsx` | 2 |
-| Etiquetas por unidad | `PZ01` 15, `DN03` 13, `KF02` 13, `CW04` 11 |
+| Equipos totales | 81 |
+| Equipos con relación rota (sin tipo o sin restaurante) | 0 |
+| Equipos en unidades retiradas (`active = 0`) | 0 |
+| Etiquetas emitidas | 54 |
+| Tokens distintos | 54 (ninguno duplicado) |
+| Etiquetas huérfanas (equipo borrado) | 0 |
+| Etiquetas de equipos con origen `INVENTARIO PH01.xlsx` | 4 |
+| Etiquetas por unidad | `PZ01` 17, `DN03` 13, `KF02` 13, `CW04` 10, `DNS02` 1 |
+| Equipos por unidad | `PZ01` 44, `DN03` 13, `KF02` 13, `CW04` 10, `DNS02` 1 |
+| Equipos por estado | `ACTIVE` 64, `MAINTENANCE` 9, `DAMAGED` 8 |
 
-Las 2 etiquetas de origen PH01 corresponden a los dos equipos cuyo `asset_code`
-incluye el texto largo del documento (Mini-PC y guarda monedas). Sus tokens se
-conservan: el equipo sigue existiendo, ahora en `PZ01`.
+Las etiquetas de origen PH01 corresponden a equipos cuyo `asset_code` incluye el
+texto largo del documento. Sus tokens se conservan: el equipo sigue existiendo,
+ahora en `PZ01`.
+
+**Issue #34.** La auditoría no encontró ninguna relación rota ni unidad retirada,
+así que **no hay datos que corregir**: la generación de etiquetas resuelve la
+identidad de los 81 equipos y las 54 etiquetas emitidas resuelven su equipo, su
+tipo y su restaurante (0 huérfanas). El diagnóstico se vuelve a ejecutar cuando
+se quiera con `npm run label-relations:check`.
 
 ---
 
@@ -227,7 +241,7 @@ duplica, pero **sustituye**.
 
 **Un equipo sin etiqueta**
 La etiqueta es opcional. `/equipment` muestra su estado de seguridad, y `/labels`
-genera la que falte. Los 29 equipos sin etiqueta no están rotos.
+genera la que falte. Los 27 equipos sin etiqueta no están rotos.
 
 **"Solo funciona con algunos equipos" (issue #34)**
 `generateSecurityLabel` resuelve la identidad con JOIN exteriores: si a un equipo
@@ -239,5 +253,6 @@ solo lectura lista los equipos afectados:
 npm run label-relations:check   # requiere TURSO_DATABASE_URL (.env.local)
 ```
 
-También señala los equipos en unidades retiradas (`active = 0`): no fallan al
+Auditoría del 2026-10-18: **0 equipos afectados** (ver sección 7). El script
+también señala los equipos en unidades retiradas (`active = 0`): no fallan al
 generar, pero no aparecen en el selector de `/labels`.

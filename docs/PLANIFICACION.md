@@ -142,7 +142,12 @@ Estos puntos no se pueden confirmar **ni desmentir** mirando el código:
 | **Si se cumplen requisitos de la organización** | No hay especificación de alcance ni auditoría externa. |
 | **Horas de trabajo y coste** | No hay historial de commits por persona ni tasación. |
 | **Si el hash ZPL corresponde al logo correcto** | El hash **sí** se verifica contra el repositorio, pero que el logo sea el de marca correcta es una revisión visual. |
-| **Si hay equipos con relaciones de etiqueta rotas en producción** | El diagnóstico `label-relations:check` es de solo lectura, pero necesita la base real; no se ha ejecutado contra producción, así que no se puede afirmar que las etiquetas emitidas estén íntegras. |
+
+**Nota (2026-10-18).** El único punto de esta lista que sí se pudo comprobar
+contra la base real es el de las relaciones de etiqueta. `npm run
+label-relations:check` (solo lectura, únicamente `SELECT`) se ejecutó contra
+producción: **81 equipos, 0 con relación rota y 0 en unidades retiradas**. El
+detalle está en `docs/ETIQUETAS-Y-QR.md`, sección 7.
 
 ---
 
