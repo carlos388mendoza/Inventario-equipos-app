@@ -59,7 +59,10 @@ export function resolveDbConfig(
 function ensureFileDirectory(url: string): void {
   if (!url.startsWith("file:")) return;
   const raw = url.slice("file:".length).split("?")[0];
-  const filePath = resolve(process.cwd(), raw);
+  // Solo se ejecuta con `file:` (desarrollo local); en producción se sale antes.
+  // El `turbopackIgnore` evita que el acceso dinámico al sistema de ficheros haga
+  // que Turbopack incluya todo el proyecto en el output del servidor.
+  const filePath = resolve(/* turbopackIgnore: true */ process.cwd(), raw);
   mkdirSync(dirname(filePath), { recursive: true });
 }
 
