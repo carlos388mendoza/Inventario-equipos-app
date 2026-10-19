@@ -171,8 +171,9 @@ detalle está en `docs/ETIQUETAS-Y-QR.md`, sección 7.
 4. **Analítica** de uso, si se decide que interesa medir.
 5. **Dar de alta el dominio** en Google Search Console y Bing Webmaster Tools, y
    enviar el `sitemap.xml`.
-6. **Limpiar los SVG de plantilla** sin usar de `public/` (`next.svg`,
-   `vercel.svg`, `file.svg`, `globe.svg`, `window.svg`).
+6. **Limpiar los SVG de plantilla** sin usar de `public/`. Hecho: se eliminaron
+   `next.svg`, `vercel.svg`, `file.svg`, `globe.svg` y `window.svg`, que ningún
+   archivo del proyecto referenciaba.
 7. **Renombrar `public/brands/pizza-hut.jpg`**, que es un AVIF con extensión `.jpg`.
    No es un error funcional: se deja hasta que haya un momento tranquilo.
 8. **Consolidar la documentación del QR**: hoy está en el README, en

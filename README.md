@@ -569,8 +569,6 @@ documentado en [`docs/PLANIFICACION.md`](docs/PLANIFICACION.md).
 - **`public/brands/pizza-hut.jpg` es en realidad un AVIF** (sus bytes empiezan por
   `ftypavif`) con extensión `.jpg`. Se usa tal cual y funciona; renombrarlo no es
   necesario.
-- **Hay SVG de plantilla de Next sin usar** en `public/` (`next.svg`, `vercel.svg`,
-  `file.svg`, `globe.svg`, `window.svg`).
 - **La indexación depende de terceros.** El código prepara el sitio, pero nadie ha
   dado de alta el dominio en Search Console ni Bing.
 
