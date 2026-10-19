@@ -82,14 +82,28 @@ export function LabelsManager({
   labels: initial,
   restaurantOptions,
   equipmentOptions,
+  initialEquipmentId,
 }: {
   labels: LabelDto[];
   restaurantOptions: LabelRestaurantOption[];
   equipmentOptions: LabelEquipmentOption[];
+  /**
+   * Equipo a preseleccionar al llegar con `?equipment=<id>` desde el alta. Si se
+   * encuentra, el diálogo de generación se abre ya con su unidad y el equipo
+   * marcados; si no, todo arranca como siempre.
+   */
+  initialEquipmentId?: string;
 }) {
-  const [restaurantId, setRestaurantId] = React.useState("");
-  const [equipmentIds, setEquipmentIds] = React.useState<string[]>([]);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const suggested = initialEquipmentId
+    ? equipmentOptions.find((e) => e.id === initialEquipmentId)
+    : undefined;
+  const [restaurantId, setRestaurantId] = React.useState(
+    suggested?.restaurantId ?? ""
+  );
+  const [equipmentIds, setEquipmentIds] = React.useState<string[]>(
+    suggested ? [suggested.id] : []
+  );
+  const [dialogOpen, setDialogOpen] = React.useState(suggested !== undefined);
   // Etiquetas recién generadas en el diálogo, con su propio QR para la vista
   // previa y sus datos para imprimir.
   const [generated, setGenerated] = React.useState<GeneratedLabelItem[] | null>(

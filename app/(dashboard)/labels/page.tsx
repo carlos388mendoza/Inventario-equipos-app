@@ -15,8 +15,15 @@ import type { LabelDto } from "./types";
 
 export const dynamic = "force-dynamic";
 
-export default async function LabelsPage() {
+export default async function LabelsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ equipment?: string }>;
+}) {
   await requireRole(ROLES.ADMIN, ROLES.IT_MANAGER);
+  // Al registrar un equipo, el toast de éxito enlaza aquí con su id para
+  // preseleccionarlo y no tener que buscarlo en la lista.
+  const { equipment: suggestedEquipmentId } = await searchParams;
 
   const [labelRows, restaurantRows, equipmentRows] = await Promise.all([
     db
@@ -81,6 +88,7 @@ export default async function LabelsPage() {
           assetCode: e.assetCode,
           restaurantId: e.restaurantId,
         }))}
+        initialEquipmentId={suggestedEquipmentId}
       />
     </main>
   );

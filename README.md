@@ -287,6 +287,8 @@ Reglas completas en [`docs/MOVIMIENTOS.md`](docs/MOVIMIENTOS.md).
 ## Etiquetas, QR e impresión
 
 - Cada equipo puede tener **una** etiqueta de seguridad (`security_labels`).
+- Al **registrar** un equipo, el aviso de éxito ofrece generar su etiqueta y abre
+  `/labels` con ese equipo ya preseleccionado; nadie tiene que buscarlo a mano.
 - El token es un **UUID sin guiones** (32 caracteres hexadecimales), no el
   identificador del equipo. Quien tenga el QR no puede deducir nada del inventario.
 - La URL del QR es `/e/<token>` y se genera con `NEXT_PUBLIC_APP_URL`.

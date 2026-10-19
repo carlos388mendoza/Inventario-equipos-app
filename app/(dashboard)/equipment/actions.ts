@@ -19,6 +19,14 @@ import {
 
 export type EquipmentActionResult = { ok: true } | { ok: false; error: string };
 
+/**
+ * El alta devuelve el `id` del equipo para que el formulario pueda ofrecer la
+ * generación de la etiqueta sin una segunda consulta.
+ */
+export type CreateEquipmentResult =
+  | { ok: true; id: string }
+  | { ok: false; error: string };
+
 async function authorizeManager() {
   const user = await requireRole(ROLES.ADMIN, ROLES.IT_MANAGER);
   return user;
@@ -44,7 +52,7 @@ async function logEvent(params: {
 
 export async function createEquipment(
   input: unknown
-): Promise<EquipmentActionResult> {
+): Promise<CreateEquipmentResult> {
   const user = await authorizeManager();
   try {
     const parsed = equipmentInputSchema.parse(input);
@@ -88,12 +96,12 @@ export async function createEquipment(
     });
 
     revalidateEquipmentViews();
-    return { ok: true };
+    return { ok: true, id };
   } catch (error) {
     if (error instanceof Error && error.message !== "NEXT_REDIRECT") {
       return { ok: false, error: error.message };
     }
-    return { ok: true };
+    return { ok: false, error: "No se pudo registrar el equipo." };
   }
 }
 

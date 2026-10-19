@@ -90,20 +90,37 @@ export function EquipmentForm({
         installationDate: form.installationDate,
         notes: form.notes,
       };
-      const result = equipmentId
-        ? await updateEquipment(equipmentId, payload)
-        : await createEquipment(payload);
-      if (!result.ok) {
-        toast.error(result.error ?? "No se pudo guardar el equipo.");
+      if (equipmentId) {
+        const result = await updateEquipment(equipmentId, payload);
+        if (!result.ok) {
+          toast.error(result.error ?? "No se pudo guardar el equipo.");
+          return;
+        }
+        toast.success("Equipo actualizado.");
+        // La navegación ya trae los datos frescos de la ruta destino; aquí solo
+        // se avisa al resto de pestañas.
+        broadcastOnly();
+        router.push(`/equipment/${equipmentId}`);
         return;
       }
-      toast.success(equipmentId ? "Equipo actualizado." : "Equipo registrado.");
-      // La navegación ya trae los datos frescos de la ruta destino; aquí solo
-      // se avisa al resto de pestañas.
+
+      const result = await createEquipment(payload);
+      if (!result.ok) {
+        toast.error(result.error ?? "No se pudo registrar el equipo.");
+        return;
+      }
+      // Un equipo nuevo no trae etiqueta: se ofrece generarla aquí mismo en vez
+      // de obligar a ir a /labels y buscarlo. La acción del toast sigue viva
+      // tras saltar al inventario porque el Toaster vive en el layout raíz.
+      toast.success("Equipo registrado.", {
+        action: {
+          label: "Generar etiqueta",
+          onClick: () => router.push(`/labels?equipment=${result.id}`),
+        },
+        duration: 10000,
+      });
       broadcastOnly();
-      router.push(
-        equipmentId ? `/equipment/${equipmentId}` : "/equipment"
-      );
+      router.push("/equipment");
     });
   }
 

@@ -153,8 +153,9 @@ Estos puntos no se pueden confirmar **ni desmentir** mirando el código:
    `lib/security/csp.ts` arma la política (scripts con nonce, impresora Zebra en
    `connect-src`). El nonce obliga a render dinámico en todas las rutas. Falta
    validarla en un despliegue real con el service worker activo.
-2. **Lista de etiquetas generadas para equipos nuevos.** Un equipo nuevo no trae
-   etiqueta; hay que ir a `/labels` a emitirla. Podría sugerirse al crearlo.
+2. **Sugerir la etiqueta al crear un equipo.** Implementado: el alta devuelve el
+   `id` y el aviso de éxito ofrece "Generar etiqueta", que abre
+   `/labels?equipment=<id>` con el equipo ya preseleccionado.
 3. **Restaurar un equipo archivado.** Implementado: `restoreEquipment` devuelve
    el equipo a `ACTIVE` con su registro en `history` y botón en la ficha.
    Verifica que el tipo exista y que la unidad siga activa antes de reactivar.
