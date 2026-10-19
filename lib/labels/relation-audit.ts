@@ -1,3 +1,8 @@
+import { asc, eq } from "drizzle-orm";
+import type { LibSQLDatabase } from "drizzle-orm/libsql";
+
+import * as schema from "@/lib/db/schema";
+import { equipment, equipmentTypes, restaurants } from "@/lib/db/schema";
 import type { LabelRelationIssue } from "@/lib/labels/label-generation";
 
 /**
@@ -7,8 +12,10 @@ import type { LabelRelationIssue } from "@/lib/labels/label-generation";
  * precisamente para poder decir qué falta cuando la relación está rota. Este
  * módulo reutiliza esa misma lectura, pero sobre TODO el inventario, para poder
  * listar de antemano los equipos que fallarían ("solo funciona con algunos
- * equipos") sin tocar nada: solo clasifica filas ya unidas.
+ * equipos") sin tocar nada: solo consulta y clasifica filas ya unidas.
  */
+
+type AuditDb = Pick<LibSQLDatabase<typeof schema>, "select">;
 
 /** Fila de equipo ya unida con su tipo y su restaurante (o `null` si faltan). */
 export interface EquipmentRelationRow {
@@ -75,4 +82,27 @@ export function findEquipmentInInactiveUnits(
     }
   }
   return result;
+}
+
+/**
+ * Lee TODO el inventario con el tipo y el restaurante unidos por la izquierda:
+ * `null` significa que la relación no existe. Es la misma lectura que hace
+ * `resolveLabelEquipment` al generar, pero para todos los equipos a la vez.
+ * Solo `SELECT`.
+ */
+export async function listEquipmentRelations(
+  db: AuditDb
+): Promise<EquipmentRelationRow[]> {
+  return db
+    .select({
+      id: equipment.id,
+      assetCode: equipment.assetCode,
+      typeName: equipmentTypes.name,
+      restaurantName: restaurants.name,
+      restaurantActive: restaurants.active,
+    })
+    .from(equipment)
+    .leftJoin(equipmentTypes, eq(equipment.equipmentTypeId, equipmentTypes.id))
+    .leftJoin(restaurants, eq(equipment.restaurantId, restaurants.id))
+    .orderBy(asc(equipment.assetCode));
 }

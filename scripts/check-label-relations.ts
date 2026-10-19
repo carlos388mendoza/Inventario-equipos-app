@@ -15,15 +15,14 @@
  * tests; el script solo consulta e imprime.
  */
 import { createClient } from "@libsql/client";
-import { asc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 
 import {
   findEquipmentInInactiveUnits,
   findEquipmentRelationProblems,
+  listEquipmentRelations,
 } from "../lib/labels/relation-audit";
 import { describeIncompleteLabel } from "../lib/labels/label-generation";
-import { equipment, equipmentTypes, restaurants } from "../lib/db/schema";
 
 const tursoUrl = process.env.TURSO_DATABASE_URL;
 if (!tursoUrl) {
@@ -37,18 +36,7 @@ const client = createClient({ url: tursoUrl, authToken: process.env.TURSO_AUTH_T
 const db = drizzle(client);
 
 async function main() {
-  const rows = await db
-    .select({
-      id: equipment.id,
-      assetCode: equipment.assetCode,
-      typeName: equipmentTypes.name,
-      restaurantName: restaurants.name,
-      restaurantActive: restaurants.active,
-    })
-    .from(equipment)
-    .leftJoin(equipmentTypes, eq(equipment.equipmentTypeId, equipmentTypes.id))
-    .leftJoin(restaurants, eq(equipment.restaurantId, restaurants.id))
-    .orderBy(asc(equipment.assetCode));
+  const rows = await listEquipmentRelations(db);
 
   const problems = findEquipmentRelationProblems(rows);
   const inactive = findEquipmentInInactiveUnits(rows);
