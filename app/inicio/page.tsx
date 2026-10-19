@@ -13,10 +13,12 @@ import {
 /**
  * Landing pública del sistema.
  *
- * Es la única página de contenido indexable del sitio, y por diseño es
- * estática: no consulta la base de datos, no lee la sesión y no menciona rutas
- * del panel. Solo enlaza a /login, que es la entrada real para el personal
- * autorizado.
+ * Es la única página de contenido indexable del sitio. No consulta la base de
+ * datos, no lee la sesión y no menciona rutas del panel: solo enlaza a /login,
+ * que es la entrada real para el personal autorizado.
+ *
+ * Se sirve de forma dinámica (el layout raíz lee el nonce de la CSP en cada
+ * petición), pero su contenido sigue siendo estático: sin datos ni sesión.
  */
 export const metadata: Metadata = {
   // `absolute` ignora la plantilla "%s | Grupo Comidas" del layout: para la

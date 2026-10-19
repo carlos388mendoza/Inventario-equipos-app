@@ -463,7 +463,7 @@ página de contenido** y señalizar todo lo demás.
 | Pieza | Archivo | Qué hace |
 |---|---|---|
 | Metadata base | `app/layout.tsx` | `metadataBase`, título con plantilla, descripción, keywords, Open Graph, Twitter Card, `formatDetection` y Apple Web App. |
-| Página pública | `app/inicio/page.tsx` | Landing estática: **no consulta la base de datos**, no lee la sesión y no enlaza rutas del panel. |
+| Página pública | `app/inicio/page.tsx` | Landing **sin acceso a la base de datos**: no lee la sesión y no enlaza rutas del panel. Se sirve de forma dinámica por el nonce de la CSP. |
 | robots.txt | `app/robots.ts` | Permite todo y **desbloquea una por una** las 14 rutas privadas. Incluye `Sitemap` y `Host`. |
 | Sitemap | `app/sitemap.ts` | Contiene **solo** `/inicio`. |
 | Login | `app/(auth)/login/page.tsx` | `noindex, follow`: accesible para rastrear, fuera del índice. |
@@ -506,6 +506,9 @@ Tools. Ver [`docs/SEO-Y-EXPOSICION.md`](docs/SEO-Y-EXPOSICION.md).
    auditoría.
 9. **Sin secretos en el repositorio.** `.env*` ignorado; `.env.example` solo
    nombres.
+10. **CSP con nonce.** `proxy.ts` fija una `Content-Security-Policy` por petición
+    (scripts con nonce, sin `unsafe-inline` para scripts) y el layout propaga el
+    nonce a `next-themes`.
 
 ---
 

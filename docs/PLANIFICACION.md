@@ -77,7 +77,7 @@ Documento para profesor. Separa con claridad lo que **está implementado**, lo q
 - `robots.txt` generado con 14 rutas privadas excluidas.
 - `sitemap.xml` generado con la única URL pública.
 - `noindex` en login y en la ficha del QR.
-- Landing pública estática, sin acceso a la base de datos.
+- Landing pública sin acceso a la base de datos (se sirve dinámica por el nonce de la CSP).
 
 ---
 
@@ -149,8 +149,10 @@ Estos puntos no se pueden confirmar **ni desmentir** mirando el código:
 
 ### Alta
 
-1. **CSP.** No hay `Content-Security-Policy`. La guía de Next existe, pero
-   aplicarla con el service worker y Browser Print requiere pruebas.
+1. **CSP.** Implementada: `proxy.ts` genera un `nonce` por petición y
+   `lib/security/csp.ts` arma la política (scripts con nonce, impresora Zebra en
+   `connect-src`). El nonce obliga a render dinámico en todas las rutas. Falta
+   validarla en un despliegue real con el service worker activo.
 2. **Lista de etiquetas generadas para equipos nuevos.** Un equipo nuevo no trae
    etiqueta; hay que ir a `/labels` a emitirla. Podría sugerirse al crearlo.
 3. **Restaurar un equipo archivado.** Hoy se hace editando el equipo a mano desde
