@@ -61,7 +61,10 @@ const LOGO_FIT: Record<string, LogoFit> = {
   // content 462x234 sobre render 600x400
   "dennys.png": { width: 129.9, height: 86.6, left: -14.9, top: 6.7 },
   // content 285x239 sobre render 600x337
+  // El archivo real es `pizza-hut.avif`; se conserva la clave `.jpg` porque las
+  // filas antiguas de `restaurants.logo` aún guardan esa ruta (ver next.config.ts).
   "pizza-hut.jpg": { width: 210.5, height: 118.2, left: -55.4, top: -9.1 },
+  "pizza-hut.avif": { width: 210.5, height: 118.2, left: -55.4, top: -9.1 },
   // content 600x485 sobre render 600x487
   "china-wok.svg": { width: 100, height: 81.2, left: 0, top: 9.3 },
 };

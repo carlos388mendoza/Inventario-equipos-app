@@ -557,9 +557,9 @@ documentado en [`docs/PLANIFICACION.md`](docs/PLANIFICACION.md).
   asset es un lockup horizontal de 1399x501 (2.79:1) con fondo blanco horneado;
   dentro de un círculo se ve como una banda compacta. Hacerlo legible exigiría un
   asset cuadrado o circular.
-- **`public/brands/pizza-hut.jpg` es en realidad un AVIF** (sus bytes empiezan por
-  `ftypavif`) con extensión `.jpg`. Se usa tal cual y funciona; renombrarlo no es
-  necesario.
+- **El logo de Pizza Hut es un AVIF** (`public/brands/pizza-hut.avif`). Antes
+  tenía extensión `.jpg`; se corrigió y se añadió una redirección desde la ruta
+  antigua porque las filas de `restaurants.logo` en producción aún la guardan.
 - **La indexación depende de terceros.** El código prepara el sitio, pero nadie ha
   dado de alta el dominio en Search Console ni Bing.
 

@@ -25,7 +25,7 @@ const baseData: ZplLabelData = {
   typeName: "Impresora de facturas",
   restaurantName: "Pizza Hut",
   restaurantSector: "Cocina",
-  restaurantLogo: "/brands/pizza-hut.jpg",
+  restaurantLogo: "/brands/pizza-hut.avif",
   installationDate: null,
   createdAt: "2026-09-15T12:00:00.000Z",
 };
@@ -54,7 +54,7 @@ function logoAreaFor(url: string, magnification: number) {
 }
 
 const LOGO_PATHS: Record<string, string> = {
-  "pizza-hut": "/brands/pizza-hut.jpg",
+  "pizza-hut": "/brands/pizza-hut.avif",
   dennys: "/brands/dennys.png",
   "china-wok": "/brands/china-wok.svg",
   kfc: "/brands/kfc.svg",
@@ -257,7 +257,7 @@ describe("logos", () => {
   });
 
   it("usa los bitmaps correctos: Pizza Hut del jpg y Denny's del png", () => {
-    expect(logoGraphicFor("/brands/pizza-hut.jpg")).toBe(ZPL_LOGO_GRAPHICS["pizza-hut"]);
+    expect(logoGraphicFor("/brands/pizza-hut.avif")).toBe(ZPL_LOGO_GRAPHICS["pizza-hut"]);
     expect(logoGraphicFor("/brands/dennys.png")).toBe(ZPL_LOGO_GRAPHICS["dennys"]);
     expect(logoGraphicFor("/brands/china-wok.svg")).toBe(ZPL_LOGO_GRAPHICS["china-wok"]);
     expect(logoGraphicFor("/brands/kfc.svg")).toBe(ZPL_LOGO_GRAPHICS["kfc"]);

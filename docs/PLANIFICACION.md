@@ -174,8 +174,10 @@ detalle está en `docs/ETIQUETAS-Y-QR.md`, sección 7.
 6. **Limpiar los SVG de plantilla** sin usar de `public/`. Hecho: se eliminaron
    `next.svg`, `vercel.svg`, `file.svg`, `globe.svg` y `window.svg`, que ningún
    archivo del proyecto referenciaba.
-7. **Renombrar `public/brands/pizza-hut.jpg`**, que es un AVIF con extensión `.jpg`.
-   No es un error funcional: se deja hasta que haya un momento tranquilo.
+7. **Renombrar `public/brands/pizza-hut.jpg`.** Hecho: el archivo (AVIF real) pasó
+   a `public/brands/pizza-hut.avif`, se actualizaron las referencias y se añadió
+   una redirección desde la ruta antigua para no romper los `restaurants.logo`
+   ya guardados en producción.
 8. **Consolidar la documentación del QR.** Hecho: la sección del README se
    redujo a un resumen y enlaza a `docs/ETIQUETAS-Y-QR.md`, que es donde vive el
    detalle (token, ficha pública, ZPL y hash).

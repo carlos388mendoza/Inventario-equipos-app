@@ -35,8 +35,8 @@ beforeAll(async () => {
     updatedAt: ahora,
   });
   await temp.db.insert(restaurants).values([
-    { id: PZ01, code: "PZ01", name: "Pizza Hut", brand: "Pizza Hut", sector: "Cocina", logo: "/brands/pizza-hut.jpg", address: null, active: true, createdAt: ahora, updatedAt: ahora },
-    { id: PH01, code: "PH01", name: "Pizza Hut PH01", brand: "Pizza Hut", sector: null, logo: "/brands/pizza-hut.jpg", address: null, active: false, createdAt: ahora, updatedAt: ahora },
+    { id: PZ01, code: "PZ01", name: "Pizza Hut", brand: "Pizza Hut", sector: "Cocina", logo: "/brands/pizza-hut.avif", address: null, active: true, createdAt: ahora, updatedAt: ahora },
+    { id: PH01, code: "PH01", name: "Pizza Hut PH01", brand: "Pizza Hut", sector: null, logo: "/brands/pizza-hut.avif", address: null, active: false, createdAt: ahora, updatedAt: ahora },
     { id: KF02, code: "KF02", name: "KFC", brand: "KFC", sector: "Caja", logo: "/brands/kfc.svg", address: null, active: true, createdAt: ahora, updatedAt: ahora },
   ]);
 });

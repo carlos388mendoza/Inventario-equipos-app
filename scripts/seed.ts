@@ -36,7 +36,7 @@ async function main(): Promise<void> {
       code: "PZ01",
       brand: "Pizza Hut",
       sector: "Cocina",
-      logo: "/brands/pizza-hut.jpg",
+      logo: "/brands/pizza-hut.avif",
       address: "Av. Principal 101",
     },
     {

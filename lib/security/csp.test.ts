@@ -49,6 +49,13 @@ describe("buildContentSecurityPolicy", () => {
     expect(connectSrc).toContain("http://localhost:9100");
   });
 
+  it("permite registrar el service worker y cargar el manifiesto", () => {
+    const csp = buildContentSecurityPolicy("abc123");
+
+    expect(directive(csp, "worker-src")).toBe("worker-src 'self' blob:");
+    expect(directive(csp, "manifest-src")).toBe("manifest-src 'self'");
+  });
+
   it("solo añade el WebSocket de HMR en desarrollo", () => {
     const connectSrc = (csp: string) => directive(csp, "connect-src") ?? "";
 

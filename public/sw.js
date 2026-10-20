@@ -1,5 +1,19 @@
-const VERSION = "v1";
-const CORE = ["./", "./offline.html"];
+const VERSION = "v2";
+const CORE = ["./offline.html"];
+
+/**
+ * Un `Response` solo se guarda si el servidor lo permite. Las páginas de la app
+ * salen con `Cache-Control: private, no-store` (llevan un `nonce` y datos de
+ * sesión); guardarlas en la Cache API filtraría contenido autenticado que
+ * sobreviviría al cierre de sesión o a otro usuario del mismo equipo.
+ */
+function isCacheable(response) {
+  if (!response || !response.ok) return false;
+  const cacheControl = (response.headers.get("cache-control") || "").toLowerCase();
+  return (
+    !cacheControl.includes("no-store") && !cacheControl.includes("private")
+  );
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -38,8 +52,10 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(VERSION).then((cache) => cache.put(request, copy)).catch(() => {});
+          if (isCacheable(response)) {
+            const copy = response.clone();
+            caches.open(VERSION).then((cache) => cache.put(request, copy)).catch(() => {});
+          }
           return response;
         })
         .catch(() =>
@@ -58,7 +74,7 @@ self.addEventListener("fetch", (event) => {
     caches.match(request).then((cached) => {
       const refresh = fetch(request)
         .then((response) => {
-          if (response && response.ok) {
+          if (isCacheable(response)) {
             const copy = response.clone();
             caches.open(VERSION).then((cache) => cache.put(request, copy)).catch(() => {});
           }
