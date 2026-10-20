@@ -86,7 +86,7 @@ export function DateRangePicker({
           <CalendarDays className="size-4 shrink-0 opacity-60" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto p-0">
+      <PopoverContent align="start" sideOffset={4} className="w-auto max-w-[calc(100vw-1rem)] overflow-x-auto p-0">
         <Calendar
           mode="range"
           numberOfMonths={months}
@@ -94,7 +94,7 @@ export function DateRangePicker({
           onSelect={(range) => onChange(range ?? {})}
           autoFocus
         />
-        <div className="flex items-center justify-between gap-2 border-t p-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t p-2">
           <span className="px-1 text-xs text-muted-foreground">
             Selecciona el día inicial y el final
           </span>
