@@ -19,7 +19,9 @@ const ZPL_FILE = join("lib", "zpl", "graphics.generated.ts");
 describe("ZPL aprobado", () => {
   it("13. lib/zpl/graphics.generated.ts conserva el hash aprobado", () => {
     const actual = createHash("sha256")
-      .update(readFileSync(ZPL_FILE))
+      // `core.autocrlf` puede convertir el archivo del checkout a CRLF en Windows.
+      // El hash aprobado se calcula sobre el contenido canónico del blob (LF).
+      .update(readFileSync(ZPL_FILE, "utf8").replace(/\r\n/g, "\n"))
       .digest("hex")
       .toUpperCase();
 

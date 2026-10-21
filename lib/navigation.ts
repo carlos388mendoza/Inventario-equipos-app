@@ -12,6 +12,7 @@ import {
   Store,
   Tags,
   Users,
+  Wrench,
 } from "lucide-react";
 import { ROLES, type UserRole } from "@/lib/db/enums";
 
@@ -138,7 +139,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     href: "/technicians",
     label: "Técnicos",
-    icon: Users,
+    icon: Wrench,
     group: "administration",
     roles: [ROLES.ADMIN, ROLES.HEAD_TECHNICIAN],
   },
