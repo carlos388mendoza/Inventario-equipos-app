@@ -30,7 +30,7 @@ export interface LabelEquipmentRow {
 
 type LabelDb = Pick<
   LibSQLDatabase<typeof schema>,
-  "select" | "insert"
+  "select" | "insert" | "update"
 >;
 
 /**
@@ -118,6 +118,10 @@ export async function getLabelEquipmentRow(
  * Guarda la etiqueta del equipo. Si ya tenía una, conserva la MISMA fila y solo
  * cambia el token: nunca se duplica una etiqueta por equipo, porque
  * `equipment_id` tiene índice único.
+ *
+ * Si ya existía una etiqueta (regeneración), se marca `regeneratedAt` con
+ * la fecha/hora de regeneración. Si es la primera vez, `regeneratedAt` queda
+ * en NULL.
  */
 export async function upsertSecurityLabel(
   db: LabelDb,
@@ -125,8 +129,31 @@ export async function upsertSecurityLabel(
   token: string,
   now: Date
 ): Promise<void> {
+  const existing = await db
+    .select({ id: securityLabels.id })
+    .from(securityLabels)
+    .where(eq(securityLabels.equipmentId, equipmentId))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(securityLabels)
+      .set({ token, regeneratedAt: now })
+      .where(eq(securityLabels.equipmentId, equipmentId));
+    return;
+  }
+
   await db
     .insert(securityLabels)
-    .values({ id: crypto.randomUUID(), equipmentId, token, createdAt: now })
-    .onConflictDoUpdate({ target: securityLabels.equipmentId, set: { token } });
+    .values({
+      id: crypto.randomUUID(),
+      equipmentId,
+      token,
+      createdAt: now,
+      regeneratedAt: null,
+    })
+    .onConflictDoUpdate({
+      target: securityLabels.equipmentId,
+      set: { token, regeneratedAt: now },
+    });
 }

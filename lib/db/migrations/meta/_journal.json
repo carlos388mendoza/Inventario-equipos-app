@@ -50,6 +50,13 @@
       "when": 1791909003073,
       "tag": "0006_aromatic_mandrill",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1792552019486,
+      "tag": "0007_brown_toxin",
+      "breakpoints": true
     }
   ]
 }

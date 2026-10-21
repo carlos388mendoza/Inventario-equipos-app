@@ -339,6 +339,7 @@ export function LabelsManager({
                     sort={sort}
                     onToggle={toggle}
                   />
+                  <th className="px-4 py-2 text-left font-medium">Regenerada</th>
                   <th className="px-4 py-2 text-right font-medium">
                     Acciones
                   </th>
@@ -348,7 +349,7 @@ export function LabelsManager({
                 {initial.length === 0 && (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="px-4 py-8 text-center text-muted-foreground"
                     >
                       Aún no hay etiquetas generadas.
@@ -405,8 +406,11 @@ export function LabelsManager({
                     <td className="px-4 py-2 text-muted-foreground">
                       {formatDate(l.createdAt)}
                     </td>
+                    <td className="px-4 py-2 text-muted-foreground">
+                      {l.regeneratedAt ? formatDate(l.regeneratedAt) : "No"}
+                    </td>
                     <td className="px-4 py-2 text-right">
-<div className="inline-flex gap-2">
+                      <div className="inline-flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"

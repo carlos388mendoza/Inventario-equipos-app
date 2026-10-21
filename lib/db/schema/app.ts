@@ -383,6 +383,8 @@ export const securityLabels = sqliteTable(
       .references(() => equipment.id, { onDelete: "cascade" }),
     token: text("token").notNull(),
     createdAt: integer("createdAt", { mode: "timestamp_ms" }).notNull(),
+    /** Fecha de la última regeneración. NULL si nunca se ha regenerado. */
+    regeneratedAt: integer("regenerated_at", { mode: "timestamp_ms" }),
   },
   (table) => [
     uniqueIndex("security_labels_token_unique").on(table.token),

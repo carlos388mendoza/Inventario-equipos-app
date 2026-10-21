@@ -93,7 +93,14 @@ export function RequestManager({
   const [statusFilter, setStatusFilter] = React.useState("ALL");
   const [priorityFilter, setPriorityFilter] = React.useState("ALL");
   const [typeFilter, setTypeFilter] = React.useState("ALL");
-  const [range, setRange] = React.useState<DateRange>({});
+  const [range, setRange] = React.useState<DateRange>(() => {
+    const to = new Date();
+    const from = new Date(to);
+    from.setHours(0, 0, 0, 0);
+    to.setHours(23, 59, 59, 999);
+    from.setDate(from.getDate() - 29);
+    return { from, to };
+  });
   const [createOpen, setCreateOpen] = React.useState(false);
   const [statusTarget, setStatusTarget] = React.useState<RequestDto | null>(
     null

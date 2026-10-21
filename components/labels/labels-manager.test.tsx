@@ -34,6 +34,7 @@ function label(overrides: Partial<LabelDto> = {}): LabelDto {
     url: "https://example.com/e/token-1",
     qrDataUrl: "data:image/png;base64,QR-1",
     createdAt: new Date("2026-03-10T12:00:00Z"),
+    regeneratedAt: null,
     installationDate: null,
     ...overrides,
   };
