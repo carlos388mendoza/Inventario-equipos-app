@@ -34,6 +34,11 @@ En **Project → Settings → Environment Variables**:
 | `NEXT_PUBLIC_APP_URL` | Production, Preview | ✅ |
 | `OPENROUTER_API_KEY` | Production | Opcional (sin ella no hay IA) |
 | `AI_MODEL` | Production | Opcional |
+| `RESEND_API_KEY` | Production | Opcional (sin ella el correo se omite) |
+| `MAIL_MODE` | Production | Opcional (`production` habilita el envío real) |
+| `MAIL_TEST_RECIPIENTS` | Production | Opcional (allowlist del modo `test`) |
+| `MAIL_FROM` | Production | Opcional (remitente verificado de producción) |
+| `CRON_SECRET` | Production | Opcional (sin él, el cron responde 401) |
 
 `NEXT_PUBLIC_*` se **incorpora al bundle del cliente en tiempo de build**. Si se
 cambia en producción, hay que **re-desplegar** para que el cambio surta efecto: no
@@ -41,6 +46,19 @@ basta con guardar la variable.
 
 `BETTER_AUTH_SECRET` sin valor hace que la aplicación **no arranque** (es
 deliberado: `lib/auth/server.ts` lanza un error en producción).
+
+### Config vs Secret (aviso «needs attention»)
+
+Vercel distingue dos tipos: **Config** (legible por los miembros del proyecto) y
+**Secret** (de solo escritura tras guardarse). Los valores que son credenciales
+—`RESEND_API_KEY`, `CRON_SECRET`, `TURSO_AUTH_TOKEN`, `OPENROUTER_API_KEY`,
+`BETTER_AUTH_SECRET`— deben guardarse como **Secret**. Si se crean como Config,
+el panel los marca con un aviso porque el valor queda visible, y hay que
+**eliminarlos y volver a crearlos** como Secret (el tipo no se puede convertir en
+sitio). El código no cambia: lee las variables por nombre, sea cual sea su tipo.
+El `CRON_SECRET` y la `RESEND_API_KEY` deben existir al menos en **Production**,
+que es donde corren el cron y el envío de correo; no tenerlos en Preview no es un
+error si no se prueban esas rutas allí.
 
 ---
 

@@ -42,30 +42,6 @@ export const SYNC_MESSAGE_TYPE = "data-invalidation";
 /** Versión del protocolo, por si algún día cambia la forma del mensaje. */
 export const SYNC_MESSAGE_VERSION = 1;
 
-// ─── DIAGNÓSTICO TEMPORAL ────────────────────────────────────────────────────
-// Poner a `false` (o borrar el bloque de abajo) para quitar los logs.
-// Solo se imprime información técnica del canal: NUNCA datos de negocio.
-const TAB_SYNC_DEBUG = true;
-
-function debugLog(...parts: unknown[]): void {
-  if (!TAB_SYNC_DEBUG) {
-    return;
-  }
-  if (typeof console === "undefined") {
-    return;
-  }
-  console.log("[TAB-SYNC]", ...parts);
-}
-
-/** Identifica la pestaña sin exponer nada sensible. */
-function shortId(value: string): string {
-  return value.slice(0, 8);
-}
-
-function currentOrigin(): string {
-  return typeof window === "undefined" ? "sin-window" : window.location.origin;
-}
-
 /**
  * Evento genérico de invalidación. Campos deliberadamente mínimos: cualquiera
  * que añada un campo con datos de negocio está rompiendo la privacidad del
@@ -244,30 +220,18 @@ export function createTabSync(options: {
   }
 
   function onStorageValue(value: string | null): void {
-    debugLog("mensaje por localStorage", "teniaValor=", value !== null);
     deliver(value);
   }
 
   function deliver(raw: unknown): void {
     const message = parseMessage(raw);
     if (!message) {
-      debugLog("received pero DESCARTADO (forma invalida)", typeof raw);
       return;
     }
     // Guarda contra bucles: una pestaña ignora lo que ella misma emitió.
     if (message.senderId === senderId) {
-      debugLog(
-        "received pero IGNORADO (era nuestro propio senderId)",
-        shortId(message.senderId)
-      );
       return;
     }
-    debugLog(
-      "received",
-      "de senderId=" + shortId(message.senderId),
-      "seq=" + String(message.seq),
-      "listeners=" + String(listeners.size)
-    );
     // Copia porque un listener puede desuscribirse durante la entrega.
     for (const listener of [...listeners]) {
       listener(message);
@@ -280,19 +244,6 @@ export function createTabSync(options: {
       channel = env.createChannel(SYNC_CHANNEL_NAME);
       if (channel) {
         channel.addEventListener("message", onChannelMessage);
-        debugLog(
-          "canal creado",
-          "nombre=" + SYNC_CHANNEL_NAME,
-          "transporte=broadcast-channel",
-          "soportaBC=" + String(typeof globalThis.BroadcastChannel !== "undefined"),
-          "origin=" + currentOrigin()
-        );
-      } else {
-        debugLog(
-          "sin BroadcastChannel, uso localStorage",
-          "nombre=" + SYNC_STORAGE_KEY,
-          "origin=" + currentOrigin()
-        );
       }
     }
     return channel;
@@ -316,21 +267,9 @@ export function createTabSync(options: {
     }
     attached = true;
     if (getChannel() !== null) {
-      debugLog(
-        "listener ready",
-        "transporte=broadcast-channel",
-        "senderId=" + shortId(senderId),
-        "origin=" + currentOrigin()
-      );
       return;
     }
     detachStorage = env.subscribeStorage(SYNC_STORAGE_KEY, onStorageValue);
-    debugLog(
-      "listener ready",
-      "transporte=localStorage",
-      "senderId=" + shortId(senderId),
-      "origin=" + currentOrigin()
-    );
   }
 
   function detach(): void {
@@ -364,36 +303,19 @@ export function createTabSync(options: {
       const activeChannel = getChannel();
       if (activeChannel) {
         try {
-          debugLog(
-            "broadcasting",
-            "transporte=broadcast-channel",
-            "seq=" + String(seq),
-            "senderId=" + shortId(senderId),
-            "origin=" + currentOrigin()
-          );
           activeChannel.postMessage(message);
           return;
-        } catch (error) {
-          debugLog("postMessage fallo, uso localStorage", String(error));
+        } catch {
+          // Si el canal falla en tiempo de ejecución, se cae al fallback por
+          // localStorage: la sincronización es best-effort.
         }
       }
-      debugLog(
-        "broadcasting",
-        "transporte=localStorage",
-        "seq=" + String(seq),
-        "senderId=" + shortId(senderId)
-      );
       writeToStorage(message);
     },
 
     subscribe(listener) {
       listeners.add(listener);
       attach();
-      debugLog(
-        "suscriptor registrado",
-        "totalListeners=" + String(listeners.size),
-        "senderId=" + shortId(senderId)
-      );
       let subscribed = true;
       return () => {
         if (!subscribed) {
@@ -401,10 +323,6 @@ export function createTabSync(options: {
         }
         subscribed = false;
         listeners.delete(listener);
-        debugLog(
-          "suscriptor dado de baja",
-          "totalListeners=" + String(listeners.size)
-        );
         if (listeners.size === 0) {
           detach();
         }
@@ -425,13 +343,6 @@ let sharedTabSync: TabSync | null = null;
 export function tabSync(): TabSync {
   if (!sharedTabSync) {
     sharedTabSync = createTabSync();
-    // DIAGNÓSTICO TEMPORAL: si aparece dos veces, hay dos copias del módulo
-    // en la misma pestaña (bundling duplicado).
-    debugLog(
-      "singleton creado",
-      "senderId=" + shortId(sharedTabSync.senderId),
-      "origin=" + currentOrigin()
-    );
   }
   return sharedTabSync;
 }

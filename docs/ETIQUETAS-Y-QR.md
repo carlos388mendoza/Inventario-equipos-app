@@ -15,7 +15,8 @@ Cada equipo puede tener **una** etiqueta de seguridad, que se guarda en
 | `id` | Identificador interno, UUID. |
 | `equipmentId` | El equipo. **Único**: un equipo, una etiqueta. |
 | `token` | **UUID sin guiones** (32 hexadecimales). **Único**. |
-| `createdAt` | Cuándo se emitió. |
+| `createdAt` | Cuándo se emitió por primera vez. |
+| `regeneratedAt` | Cuándo se regeneró por última vez. `NULL` si nunca se regeneró. |
 
 La etiqueta se genera desde `/labels` (solo `ADMIN` e `IT_MANAGER`) con la acción
 `generateSecurityLabel`.
@@ -26,6 +27,28 @@ La etiqueta se genera desde `/labels` (solo `ADMIN` e `IT_MANAGER`) con la acci�
 equipo ya tenía etiqueta, **se actualiza el token** en lugar de crear una fila
 nueva. Por eso hay siempre como máximo una etiqueta por equipo, y por eso
 `revalidateLabelViews()` no necesita más.
+
+En la primera emisión `createdAt` guarda el momento y `regeneratedAt` queda en
+`NULL`; en cada regeneración posterior `regeneratedAt` se fija con la fecha/hora
+real de ESA operación (nunca se reutiliza la fecha original). La columna la añade
+la migración `0007_brown_toxin.sql`.
+
+### Orden del listado: actividad reciente
+
+`/labels` lista las etiquetas por **actividad reciente**, calculada en la
+consulta con `COALESCE(regenerated_at, created_at) DESC` y desempate determinista
+por `id` (`listSecurityLabelRows`). Una etiqueta nunca regenerada compite con su
+fecha de creación; una regenerada, con la de su última regeneración. El orden es
+del servidor, así que sigue siendo correcto aunque haya más filas de las que el
+navegador tiene cargadas.
+
+### Búsqueda en el listado
+
+La tabla incluye una barra de búsqueda que filtra por **equipo**, **tipo** o
+**restaurante** (coincidencia parcial, sin distinguir mayúsculas). El filtro es
+de cliente y no altera el orden ni la selección: al vaciar el campo se vuelve a
+ver el listado completo. Cuando ninguna fila coincide se muestra un estado vacío
+explícito.
 
 ---
 

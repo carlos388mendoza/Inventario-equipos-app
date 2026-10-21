@@ -13,9 +13,6 @@ import { useCrossTabRefresh } from "@/lib/sync/use-tab-sync";
  * No renderiza nada: solo gestiona el ciclo de vida del listener.
  */
 export function TabSyncProvider() {
-  // DIAGNÓSTICO TEMPORAL
-  console.log("[TAB-SYNC] provider mounted", "isClient=", typeof window !== "undefined");
-
   useCrossTabRefresh();
   return null;
 }

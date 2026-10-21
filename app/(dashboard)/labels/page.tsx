@@ -1,13 +1,9 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import QRCode from "qrcode";
 import { requireRole } from "@/lib/auth/session";
 import { db } from "@/lib/db";
-import {
-  equipment,
-  equipmentTypes,
-  restaurants,
-  securityLabels,
-} from "@/lib/db/schema";
+import { equipment, restaurants } from "@/lib/db/schema";
+import { listSecurityLabelRows } from "@/lib/db/queries/labels";
 import { ROLES } from "@/lib/db/enums";
 import { LabelsManager } from "@/components/labels/labels-manager";
 import { appBaseUrl } from "@/lib/utils";
@@ -26,25 +22,7 @@ export default async function LabelsPage({
   const { equipment: suggestedEquipmentId } = await searchParams;
 
   const [labelRows, restaurantRows, equipmentRows] = await Promise.all([
-    db
-      .select({
-        label: securityLabels,
-        assetCode: equipment.assetCode,
-        installationDate: equipment.installationDate,
-        typeName: equipmentTypes.name,
-        restaurantName: restaurants.name,
-        restaurantBrand: restaurants.brand,
-        restaurantSector: restaurants.sector,
-        restaurantLogo: restaurants.logo,
-      })
-      .from(securityLabels)
-      .innerJoin(equipment, eq(securityLabels.equipmentId, equipment.id))
-      .innerJoin(
-        equipmentTypes,
-        eq(equipment.equipmentTypeId, equipmentTypes.id)
-      )
-      .innerJoin(restaurants, eq(equipment.restaurantId, restaurants.id))
-      .orderBy(desc(securityLabels.createdAt)),
+    listSecurityLabelRows(db),
     db
       .select()
       .from(restaurants)

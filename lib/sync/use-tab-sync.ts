@@ -35,18 +35,11 @@ export function useCrossTabRefresh(): void {
     let timer: ReturnType<typeof setTimeout> | null = null;
 
     const unsubscribe = onDataInvalidation(() => {
-      // DIAGNÓSTICO TEMPORAL
-      console.log(
-        "[TAB-SYNC] evento recibido, programando router.refresh",
-        "yaProgramado=" + String(timer !== null)
-      );
       if (timer !== null) {
         return;
       }
       timer = setTimeout(() => {
         timer = null;
-        // DIAGNÓSTICO TEMPORAL
-        console.log("[TAB-SYNC] router.refresh");
         router.refresh();
       }, CROSS_TAB_REFRESH_COALESCE_MS);
     });
@@ -84,14 +77,10 @@ export function useMutationSync(): MutationSync {
   const router = useRouter();
 
   const broadcastOnly = React.useCallback(() => {
-    // DIAGNÓSTICO TEMPORAL
-    console.log("[TAB-SYNC] broadcastOnly() invocado");
     broadcastDataInvalidation();
   }, []);
 
   const refreshAndBroadcast = React.useCallback(() => {
-    // DIAGNÓSTICO TEMPORAL
-    console.log("[TAB-SYNC] refreshAndBroadcast() invocado");
     router.refresh();
     broadcastDataInvalidation();
   }, [router]);

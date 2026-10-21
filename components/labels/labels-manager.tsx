@@ -35,9 +35,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { MultiSelect } from "@/components/ui/multi-select";
-import { Eye, Printer } from "lucide-react";
+import { Eye, MoreVertical, Printer, RefreshCw } from "lucide-react";
 import { RestaurantIdentity } from "@/components/restaurants/restaurant-identity";
 import { LabelPreview, type LabelPreviewData } from "@/components/labels/label-preview";
 import {
@@ -126,11 +133,17 @@ export function LabelsManager({
   const [queueLabels, setQueueLabels] = React.useState<LabelPrintData[]>([]);
   const [queueOpen, setQueueOpen] = React.useState(false);
   const { sort, toggle, sortRows } = useTableSort();
+  // Búsqueda por texto sobre el listado de etiquetas. Filtra por equipo, tipo y
+  // restaurante; no toca la selección ni el orden guardado.
+  const [query, setQuery] = React.useState("");
   // Elemento que abrió el diálogo (botón «Generar etiqueta» o «Vista previa» de
   // una fila). Radix restaura el foco con el Dialog.Trigger, que aquí no existe,
   // así que lo guardamos para devolvérselo al cerrar.
   const dialogTriggerRef = React.useRef<HTMLButtonElement | null>(null);
 
+  // Id de la etiqueta cuya regeneración está en curso. Bloquea el menú de esa
+  // fila y permite mostrar el spinner sin deshabilitar las demás.
+  const [regeneratingId, setRegeneratingId] = React.useState<string | null>(null);
   const [submitting, startSubmit] = useTransition();
   const router = useRouter();
   const { refreshAndBroadcast, broadcastOnly } = useMutationSync();
@@ -159,6 +172,19 @@ export function LabelsManager({
         }
       }),
     [initial, sortRows]
+  );
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const visible = React.useMemo(
+    () =>
+      normalizedQuery
+        ? sorted.filter((l) =>
+            [l.assetCode, l.typeName, l.restaurantName]
+              .filter(Boolean)
+              .some((v) => v!.toLowerCase().includes(normalizedQuery))
+          )
+        : sorted,
+    [sorted, normalizedQuery]
   );
 
   function toggleOne(id: string) {
@@ -239,16 +265,30 @@ export function LabelsManager({
   }
 
   function handleRegenerate(label: LabelDto) {
+    // Evita dos regeneraciones simultáneas del mismo equipo (doble clic o
+    // menú abierto en dos filas): la segunda quedaría compitiendo por la misma
+    // fila en la base de datos.
+    if (regeneratingId !== null) {
+      return;
+    }
+    setRegeneratingId(label.id);
     startSubmit(async () => {
-      const res = await generateSecurityLabel({
-        equipmentId: label.equipmentId,
-      });
-      if (!res.ok) {
-        toast.error(res.error ?? "No se pudo regenerar la etiqueta.");
-        return;
+      try {
+        const res = await generateSecurityLabel({
+          equipmentId: label.equipmentId,
+        });
+        if (!res.ok) {
+          toast.error(res.error ?? "No se pudo regenerar la etiqueta.");
+          return;
+        }
+        toast.success("Etiqueta regenerada.");
+        // El valor que se muestra procede del servidor: `router.refresh()`
+        // vuelve a leer la ruta (force-dynamic) y trae el `regeneratedAt`
+        // persistido, nunca una fecha reutilizada del estado anterior.
+        refreshAndBroadcast();
+      } finally {
+        setRegeneratingId(null);
       }
-      toast.success("Etiqueta regenerada.");
-      refreshAndBroadcast();
     });
   }
 
@@ -273,6 +313,12 @@ export function LabelsManager({
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
+          <Input
+            placeholder="Buscar por equipo, tipo o restaurante…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Buscar etiquetas"
+          />
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
@@ -356,7 +402,17 @@ export function LabelsManager({
                     </td>
                   </tr>
                 )}
-                {sorted.map((l) => (
+                {initial.length > 0 && visible.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={8}
+                      className="px-4 py-8 text-center text-muted-foreground"
+                    >
+                      No hay etiquetas que coincidan con «{query.trim()}».
+                    </td>
+                  </tr>
+                )}
+                {visible.map((l) => (
                   <tr key={l.id} className="border-t">
                     <td className="px-4 py-2">
                       <input
@@ -410,40 +466,59 @@ export function LabelsManager({
                       {l.regeneratedAt ? formatDate(l.regeneratedAt) : "No"}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <div className="inline-flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          aria-label={`Vista previa de la etiqueta ${l.assetCode}`}
-                          onClick={(event) => {
-                            // Misma vista previa que en el lote, pero en su
-                            // propio diálogo (no hay lote abierto detrás).
-                            dialogTriggerRef.current = event.currentTarget;
-                            setGenerated(null);
-                            setPreview(l);
-                            setDialogOpen(true);
-                          }}
-                        >
-                          <Eye />
-                          Vista previa
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setRowToPrint(toPrintData(l))}
-                        >
-                          <Printer />
-                          Imprimir
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={submitting}
-                          onClick={() => handleRegenerate(l)}
-                        >
-                          Regenerar
-                        </Button>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Acciones de la etiqueta ${l.assetCode}`}
+                            disabled={regeneratingId === l.id}
+                            onClick={(event) => {
+                              // El menú es un portal de Radix: no usa el
+                              // diálogo, pero guardamos el disparador para
+                              // devolver el foco al cerrar la vista previa.
+                              dialogTriggerRef.current =
+                                event.currentTarget as HTMLButtonElement;
+                            }}
+                          >
+                            {regeneratingId === l.id ? (
+                              <RefreshCw className="animate-spin" />
+                            ) : (
+                              <MoreVertical />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            aria-label={`Vista previa de la etiqueta ${l.assetCode}`}
+                            onSelect={() => {
+                              // Misma vista previa que en el lote, pero en su
+                              // propio diálogo (no hay lote abierto detrás).
+                              setGenerated(null);
+                              setPreview(l);
+                              setDialogOpen(true);
+                            }}
+                          >
+                            <Eye />
+                            Vista previa
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            aria-label={`Imprimir la etiqueta ${l.assetCode}`}
+                            onSelect={() => setRowToPrint(toPrintData(l))}
+                          >
+                            <Printer />
+                            Imprimir
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            aria-label={`Regenerar la etiqueta ${l.assetCode}`}
+                            disabled={submitting}
+                            onSelect={() => handleRegenerate(l)}
+                          >
+                            <RefreshCw />
+                            Regenerar
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}

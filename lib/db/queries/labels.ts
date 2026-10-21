@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 
 import * as schema from "@/lib/db/schema";
@@ -32,6 +32,21 @@ type LabelDb = Pick<
   LibSQLDatabase<typeof schema>,
   "select" | "insert" | "update"
 >;
+
+type LabelListDb = Pick<LibSQLDatabase<typeof schema>, "select">;
+
+/**
+ * Fecha de actividad de una etiqueta: la de su última regeneración si existe,
+ * y la de creación en caso contrario. Es la base del orden "más reciente
+ * primero" y la comparten todas las vistas que listen etiquetas.
+ *
+ * `COALESCE` es compatible con SQLite/Turso y deja fuera la ambigüedad de
+ * comparar NULL: una etiqueta nunca regenerada ordena por su creación, no por
+ * debajo de todas.
+ */
+export function recentActivityTimestamp() {
+  return sql<number>`COALESCE(${securityLabels.regeneratedAt}, ${securityLabels.createdAt})`;
+}
 
 /**
  * Relación del equipo que falta para poder emitir su etiqueta. La etiqueta
@@ -156,4 +171,50 @@ export async function upsertSecurityLabel(
       target: securityLabels.equipmentId,
       set: { token, regeneratedAt: now },
     });
+}
+
+/** Fila del listado de etiquetas: la etiqueta y la identidad del equipo. */
+export interface SecurityLabelListRow {
+  label: typeof securityLabels.$inferSelect;
+  assetCode: string;
+  installationDate: Date | null;
+  typeName: string;
+  restaurantName: string;
+  restaurantBrand: string | null;
+  restaurantSector: string | null;
+  restaurantLogo: string | null;
+}
+
+/**
+ * Lista todas las etiquetas con la identidad de su equipo, ordenadas por
+ * actividad reciente: una etiqueta regenerada se marca con su última
+ * regeneración, y una nunca regenerada con su creación. `COALESCE` hace que
+ * ambas compitan en la misma escala; el id desempata de forma determinista
+ * cuando dos etiquetas comparten instante.
+ *
+ * El orden vive aquí, en la consulta, y no en el navegador: si hubiera más
+ * filas de las cargadas, el orden seguiría siendo el correcto en el servidor.
+ */
+export async function listSecurityLabelRows(
+  db: LabelListDb
+): Promise<SecurityLabelListRow[]> {
+  return db
+    .select({
+      label: securityLabels,
+      assetCode: equipment.assetCode,
+      installationDate: equipment.installationDate,
+      typeName: equipmentTypes.name,
+      restaurantName: restaurants.name,
+      restaurantBrand: restaurants.brand,
+      restaurantSector: restaurants.sector,
+      restaurantLogo: restaurants.logo,
+    })
+    .from(securityLabels)
+    .innerJoin(equipment, eq(securityLabels.equipmentId, equipment.id))
+    .innerJoin(
+      equipmentTypes,
+      eq(equipment.equipmentTypeId, equipmentTypes.id)
+    )
+    .innerJoin(restaurants, eq(equipment.restaurantId, restaurants.id))
+    .orderBy(sql`${recentActivityTimestamp()} DESC`, securityLabels.id);
 }

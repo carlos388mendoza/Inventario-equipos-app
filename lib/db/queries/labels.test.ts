@@ -3,7 +3,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { EQUIPMENT_STATUS } from "@/lib/db/enums";
 import { equipment, equipmentTypes, restaurants, securityLabels } from "@/lib/db/schema";
-import { getLabelEquipmentRow, upsertSecurityLabel } from "./labels";
+import {
+  getLabelEquipmentRow,
+  listSecurityLabelRows,
+  upsertSecurityLabel,
+} from "./labels";
 import { createTempDb, type TempDb } from "@/lib/test-utils/temp-db";
 
 /**
@@ -179,5 +183,101 @@ describe("persistencia de la etiqueta", () => {
     const row = await getLabelEquipmentRow(temp.db, id);
     expect(row?.restaurantCode).toBe("PZ01");
     expect(row?.assetCode).toBe("PH01-9999"); // el asset_code no se inventa
+  });
+});
+
+describe("fechas de creación y regeneración", () => {
+  it("una etiqueta nueva NO se marca como regenerada", async () => {
+    await upsertSecurityLabel(temp.db, "eq-PZ01", "token-1", new Date("2024-03-01T10:00:00Z"));
+
+    const [saved] = await temp.db
+      .select()
+      .from(securityLabels)
+      .where(eq(securityLabels.equipmentId, "eq-PZ01"));
+
+    expect(saved.regeneratedAt).toBeNull();
+    expect(saved.createdAt).toEqual(new Date("2024-03-01T10:00:00Z"));
+  });
+
+  it("una regeneración actualiza regeneratedAt a la fecha real de la operación", async () => {
+    await upsertSecurityLabel(temp.db, "eq-PZ01", "token-1", new Date("2024-03-01T10:00:00Z"));
+    await upsertSecurityLabel(temp.db, "eq-PZ01", "token-2", new Date("2024-04-15T18:30:00Z"));
+
+    const [saved] = await temp.db
+      .select()
+      .from(securityLabels)
+      .where(eq(securityLabels.equipmentId, "eq-PZ01"));
+
+    expect(saved.regeneratedAt).toEqual(new Date("2024-04-15T18:30:00Z"));
+    // La fecha de creación original NO se reutiliza para la regeneración.
+    expect(saved.createdAt).toEqual(new Date("2024-03-01T10:00:00Z"));
+  });
+
+  it("regenerar no altera la fecha de creación ni la de otras etiquetas", async () => {
+    await upsertSecurityLabel(temp.db, "eq-PZ01", "t-pz", new Date("2024-01-01T00:00:00Z"));
+    await upsertSecurityLabel(temp.db, "eq-KF02", "t-kf", new Date("2024-01-02T00:00:00Z"));
+    await upsertSecurityLabel(temp.db, "eq-PZ01", "t-pz-2", new Date("2024-05-01T09:00:00Z"));
+
+    const pz = await temp.db
+      .select()
+      .from(securityLabels)
+      .where(eq(securityLabels.equipmentId, "eq-PZ01"));
+    const kf = await temp.db
+      .select()
+      .from(securityLabels)
+      .where(eq(securityLabels.equipmentId, "eq-KF02"));
+
+    expect(pz[0].createdAt).toEqual(new Date("2024-01-01T00:00:00Z"));
+    expect(pz[0].regeneratedAt).toEqual(new Date("2024-05-01T09:00:00Z"));
+    expect(kf[0].regeneratedAt).toBeNull();
+  });
+
+  it("conserva los registros anteriores con regenerated_at = NULL", async () => {
+    // Una etiqueta creada antes de la migración no tiene regenerated_at.
+    await temp.db.insert(securityLabels).values({
+      id: "legacy-1",
+      equipmentId: "eq-CW04",
+      token: "token-legacy",
+      createdAt: new Date("2023-12-31T00:00:00Z"),
+    });
+
+    const rows = await listSecurityLabelRows(temp.db);
+    const legacy = rows.find((r) => r.label.id === "legacy-1");
+    expect(legacy?.label.regeneratedAt).toBeNull();
+  });
+});
+
+describe("orden por actividad reciente", () => {
+  it("las etiquetas regeneradas suben por su fecha de regeneración", async () => {
+    // A: creada primero, regenerada al final → debe ir la primera.
+    await upsertSecurityLabel(temp.db, "eq-PZ01", "a-1", new Date("2024-01-01T00:00:00Z"));
+    await upsertSecurityLabel(temp.db, "eq-KF02", "b-1", new Date("2024-02-01T00:00:00Z"));
+    await upsertSecurityLabel(temp.db, "eq-DN03", "c-1", new Date("2024-03-01T00:00:00Z"));
+    await upsertSecurityLabel(temp.db, "eq-PZ01", "a-2", new Date("2024-09-01T00:00:00Z"));
+
+    const rows = await listSecurityLabelRows(temp.db);
+    expect(rows.map((r) => r.assetCode)).toEqual([
+      "PZ01-0001",
+      "DN03-0001",
+      "KF02-0001",
+    ]);
+  });
+
+  it("las etiquetas nunca regeneradas ordenan por su creación", async () => {
+    await upsertSecurityLabel(temp.db, "eq-PZ01", "a-1", new Date("2024-01-01T00:00:00Z"));
+    await upsertSecurityLabel(temp.db, "eq-KF02", "b-1", new Date("2024-05-01T00:00:00Z"));
+
+    const rows = await listSecurityLabelRows(temp.db);
+    expect(rows.map((r) => r.assetCode)).toEqual(["KF02-0001", "PZ01-0001"]);
+  });
+
+  it("el desempate por id es determinista con fechas iguales", async () => {
+    const same = new Date("2024-06-01T00:00:00Z");
+    await upsertSecurityLabel(temp.db, "eq-KF02", "k", same);
+    await upsertSecurityLabel(temp.db, "eq-PZ01", "p", same);
+
+    const first = await listSecurityLabelRows(temp.db);
+    const second = await listSecurityLabelRows(temp.db);
+    expect(first.map((r) => r.label.id)).toEqual(second.map((r) => r.label.id));
   });
 });
