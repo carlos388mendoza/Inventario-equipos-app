@@ -69,6 +69,7 @@ export default async function LabelsPage({
         url,
         qrDataUrl: await QRCode.toDataURL(url),
         createdAt: r.label.createdAt,
+        regeneratedAt: r.label.regeneratedAt ?? null,
         installationDate: r.installationDate,
       };
     })

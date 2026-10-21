@@ -11,6 +11,7 @@ export interface LabelDto {
   url: string;
   qrDataUrl: string;
   createdAt: Date;
+  regeneratedAt: Date | null;
   installationDate: Date | null;
 }
 

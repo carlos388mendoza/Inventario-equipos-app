@@ -1,0 +1,1 @@
+ALTER TABLE `security_labels` ADD `regenerated_at` integer;
